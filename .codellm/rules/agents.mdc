@@ -1,0 +1,138 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# AGENTS.md — Dynatrace App (Strato-first)
+
+This file is the project policy. It defines how to implement changes that:
+- respect Dynatrace platform constraints,
+- remain consistent with Strato + design tokens,
+- pass quality gates (lint/build/tests),
+- and improve UI/UX quality beyond “copy/paste” implementations.
+
+Reference docs (do not duplicate here):
+- Strato reference: `docs/reference/STRATO_GUIDE.md`
+- Dynatrace platform reference: `docs/reference/DEVELOP_GUIDE.md`
+
+
+## 1) Quality gates (non-negotiable)
+
+Before declaring work “done”:
+- Lint must pass (use the repo’s lint script).
+- Build must pass for any change that touches routing, shared UI, types, dependencies, or multiple screens.
+- If you touch `actions/`, required tests for actions/widgets must pass (use repo scripts).
+
+Do not proceed with “unknown” types or APIs. Verify locally first (see §9).
+
+
+## 2) Design objective (CRITICAL)
+
+The UI must feel like a modern professional tool, not a classic admin panel.
+You are expected to:
+- design with clear hierarchy (primary/secondary/contextual),
+- optimize layout distribution (panels, sections, spacing, alignment),
+- improve microcopy (labels, buttons, help text, empty/error states),
+- create clear states (loading/empty/error/success/no results),
+- and compose components intentionally (not copy/paste layouts from existing screens).
+
+Existing screens are references, not templates. You must improve them when touching them.
+
+
+## 3) Strato-first UI policy
+
+### 3.1 Component strategy
+- Use Strato stable components first.
+- Use Strato preview components only when stable cannot meet requirements.
+- Build feature-level UI by composing Strato layout primitives (e.g., Page/App structure, Surface/Container, Grid/Flex, fields, tables, overlays).
+
+You may create feature-level components (composition + states + microcopy) for a specific feature.
+You must not create new generic UI “primitives” that compete with Strato.
+
+### 3.2 Token-only visuals
+- Do not hardcode colors, spacing, typography values, radii, shadows, or breakpoints.
+- Use Strato design tokens consistently.
+- If a file already contains literals, prefer to replace them with tokens rather than adding more.
+
+### 3.3 Layout rules (tool-like, structured)
+- Prefer clear “page regions” (header/sidebar/main/detail) as described in Strato app structure guidance.
+- Use surfaces/containers to create hierarchy (avoid flat stacks of controls).
+- Avoid “wall of controls”: group filters, use progressive disclosure for advanced options.
+
+For detailed layout guidance and spacing scales, consult `docs/reference/STRATO_GUIDE.md`.
+
+
+## 4) Microcopy rules (to prevent “ugly UI”)
+
+- Buttons must be verbs (Clear, Save, Apply, Run, Export), not vague nouns.
+- Primary action must be obvious and unique per view; secondary actions go into overflow or secondary placement.
+- Empty states must answer:
+  - what this is,
+  - why it’s empty,
+  - what the user should do next.
+- Error states must be actionable: include what failed and what to try next (without exposing sensitive details).
+
+
+## 5) Import boundaries (strict separation)
+
+Hard rule: do not mix layers.
+- UI layer must not import backend runtime code.
+- Backend/App Functions must not import React/UI.
+- Actions must keep action logic separated from widget UI.
+- Shared code (if any) should be types/contracts/schemas/constants only, no side effects, no UI runtime dependencies.
+
+If something is missing, implement it in the correct layer.
+
+
+## 6) Backend/App Functions & Actions (policy + where to read details)
+
+Backend (App Functions) and Actions are allowed and expected when needed, but must follow platform constraints.
+
+When working on backend:
+- Read `docs/reference/DEVELOP_GUIDE.md` → “App Functions” section for runtime limits, I/O limits, timeouts, logging, and allowed APIs.
+- Prefer official Dynatrace TypeScript SDK clients where appropriate (also covered in `DEVELOP_GUIDE.md`).
+- If the SDK does not provide what you need, implement missing behavior yourself as pure, tested logic that fits runtime constraints.
+
+When working on Actions:
+- Follow the repo’s established action/widget split and required tests (use repo scripts).
+- Widget UI must still follow Strato + token-only rules.
+
+
+## 7) Docs discipline (avoid duplication)
+
+- `AGENTS.md` = policy (rules, gates, boundaries, objectives).
+- `docs/reference/*` = reference (official docs, catalogs, background).
+- Do not paste Strato component catalogs or Dynatrace platform tutorials into `AGENTS.md`.
+- If you create new Actions/App Functions, add a short index entry in the root README (name + purpose + location).
+
+
+## 8) Don’ts (hard stops)
+
+- Do not ship “classic admin” UI (flat, dense, inconsistent).
+- Do not hardcode visual values; tokens only.
+- Do not guess component props/exports/token names.
+- Do not mix UI/backend/actions layers.
+- Do not close large changes without passing the required quality gates.
+
+
+## 9) Verification workflow (tool-agnostic, REQUIRED)
+
+Whenever you are not 100% sure about APIs, props, exports, tokens, or platform behavior:
+
+1) Repo-first: find prior art in this repository (similar screens/components/hooks).
+2) Verify installed packages: confirm exports and prop types via installed dependency types/source.
+3) Use TypeScript/LSP feedback to validate imports and types early; fix errors immediately.
+4) Only after local verification, consult official docs in `docs/reference/`.
+5) If something truly does not exist, implement it as:
+   - a feature-level composition (UI), or
+   - a pure utility (backend),
+   without breaking tokens, boundaries, or tests.
+
+## 10) App Settings (required for config/secrets)
+
+- Store runtime configuration in App Settings (v2), not in UI constants or env files.
+- Settings schemas live in `settings/schemas/*.schema.json`.
+- Local dev uses the App Settings plugin and mocks in `settings/local-mock-data/`.
+- Use `{{placeholder}}` in `values.json` and resolve via `secrets.json` (gitignored).
+- `settings/local-mock-data/persistence/` is local state only; never commit it.

@@ -1,0 +1,365 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# DEVELOP_GUIDE.md (reference)
+
+This document aggregates official Dynatrace “Develop” documentation for local reference.
+
+Use it when you need details about:
+- App Functions behavior/limits (`/api/**/*.function.ts`),
+- supported storage types (Grail, state, documents, settings, credentials),
+- deployment requirements and IAM permissions,
+- TypeScript SDK client packages and platform APIs,
+- workflows/intents/privacy/security guidance.
+
+This document is NOT project policy. Project rules live in `AGENTS.md`.
+Do not copy tutorial UI patterns from here into the app; use it to validate platform capabilities.
+
+---
+
+## How to use this reference in this repository
+
+- If you are implementing backend logic (App Functions), read the App Functions section first and follow runtime constraints.
+- If you are integrating with Dynatrace APIs, prefer official TypeScript SDK packages and verify installed versions in this repo.
+- If you are changing deployment/CI, follow the Deploy section and keep scripts aligned with the repo’s `package.json`.
+
+---
+
+# DEVELOP - Guía de Desarrollo de Dynatrace Apps
+
+> Guía completa para desarrollar Dynatrace Apps, desde los conceptos básicos hasta el despliegue y troubleshooting.
+
+---
+
+## Estructura de Develop
+
+- **Guides**: App functions, Data, Deploy, Intents, Workflows, Security, Privacy
+- **Test and troubleshoot**: Testing y debugging de apps
+- **Reference**: JavaScript runtime, SDK for TypeScript, Metric units
+- **Learn**: React, TypeScript, React style guide
+- **Extensions**: Ingesta de datos con Extensions
+
+---
+
+## Guides
+
+### App Functions
+
+Representan el backend de una app. Se construyen, empaquetan y despliegan junto con la app Dynatrace.
+
+**Estructura:**
+- Cada archivo `.function.ts` en `/api` se despliega automáticamente como app function
+- Expuesto como endpoint API
+- Ejecutado en el Dynatrace JavaScript runtime
+
+**Casos de uso:**
+- Acceder a APIs de terceros desde la app
+- Procesamiento pesado de datos
+- Data wrangling para consumo en UI
+- Solicitudes que requieren credenciales
+
+**Interfaz de función:**
+```typescript
+// api/hello-world.function.ts
+export default (payload) => {
+  return 'Hello World';
+};
+```
+
+**Logs:**
+```typescript
+console.log('Info message');
+console.info('Info');
+console.warn('Warning');
+console.error('Error');
+// Locales: aparecen en terminal
+// Deploy: almacenados en Grail
+```
+
+**Códigos de estado HTTP:**
+
+| Código | Razón |
+|--------|-------|
+| 200 | Sin error - ejecución exitosa |
+| 400 | Bad request - error del cliente |
+| 404 | App o función no encontrada |
+| 409 | Backend siendo desplegado |
+| 500 | Internal server error |
+| 540 | Errores JavaScript, event loop |
+| 541 | Runtime errors (memoria, timeout) |
+
+**Limitaciones del runtime:**
+- Timeout: 120 segundos
+- No pueden llamar funciones de otras apps
+- No pueden llamar function executor API
+- 256 MB RAM
+- No respuestas binarias
+- Input/output máx 5 MB
+- Límite de requests concurrentes (HTTP 429)
+- Llamadas a hosts externos deben ser explícitamente permitidas
+- No WebSocket API
+
+### Data
+
+Tipos de almacenamiento disponibles para Dynatrace Apps:
+
+| Tipo | Uso | Descripción |
+|------|-----|-------------|
+| **Grail** | Observability data | Almacenamiento unificado de logs, metrics, traces, events. Acceso vía DQL. |
+| **App state** | Estado de la app | Persistir estado entre sesiones. User-specific states disponibles. |
+| **Document storage** | Contenido usuario | Persistir contenido generado por usuario. |
+| **Settings storage** | Configuración | Configuración por environment administrator. Incluye secrets. |
+| **Credential storage** | Credenciales | Sincronización con vault externo. Usar Settings para secrets normales. |
+
+### Deploy Your App
+
+**Permisos IAM necesarios:**
+- `app-engine:apps:install`
+- `app-engine:apps:run`
+- `app-engine:apps:delete` (para uninstall)
+
+**Deploy desde local:**
+```bash
+# 1. Asegurar permisos IAM
+# 2. Navegar al root del proyecto
+# 3. Ejecutar
+npx dt-app deploy
+```
+
+**Deploy desde CI/CD:**
+
+1. Crear OAuth client con permisos IAM
+2. Setear variables de entorno:
+   - `DT_APP_OAUTH_CLIENT_ID`
+   - `DT_APP_OAUTH_CLIENT_SECRET`
+3. Ejecutar `npx dt-app deploy`
+
+**Ejemplo GitHub Actions:**
+```yaml
+name: CI
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run lint
+      - run: npx dt-app build
+      - run: npx dt-app deploy --skip-build
+```
+
+**Importante:** Incrementar versión en `app.config.json` antes de re-deploy.
+
+**Uninstall:**
+```bash
+npx dt-app uninstall
+```
+
+### Intents
+
+Mecanismo de comunicación entre apps (cross-app communication).
+
+### Workflows
+
+Automatización basada en datos de monitoreo. Permite actuar automáticamente sobre datos de monitoreo.
+
+### Forecast with Davis AI
+
+Servicios de IA/ML para predecir datos de series temporales.
+
+### Page Tokens
+
+Acceder a rutas de la app desde el contexto.
+
+### Keyboard Shortcuts
+
+Referencia de atajos de teclado de Dynatrace.
+
+### Privacy
+
+**Privacy by design:**
+
+- Identificar PII (Personally Identifiable Information)
+- Limitar tiempo de almacenamiento
+- Minimizar datos recolectados
+- Implementar medidas de privacidad por diseño
+
+### Security
+
+**Temas de seguridad a considerar:**
+
+- **Permission scopes:** Agregar scopes para usar APIs de Dynatrace
+- **Secrets management:** Gestión segura de credenciales
+- **API access:** Control de acceso a plataformas APIs
+
+---
+
+## Test and Troubleshoot
+
+### Test
+
+**Unit tests:**
+```typescript
+// Crear tests unitarios para componentes y lógica
+```
+
+**End-to-end tests:**
+```typescript
+// Tests E2E para flujos completos de usuario
+```
+
+### Troubleshoot
+
+**Conectividad:**
+- Verificar conexión entre app y Dynatrace platform
+- Debug de network requests
+
+**Monitor Dynatrace Apps:**
+- Métricas de rendimiento
+- Logs de ejecución
+- Error tracking
+
+---
+
+## Reference
+
+### JavaScript Runtime
+
+Entorno de ejecución JavaScript para Dynatrace Apps.
+
+**Características:**
+- Soporte para APIs Web estándar
+- Objetos built-in estándar
+- Entorno Dynatrace runtime
+
+**APIs soportadas:**
+- Console methods (log, info, warn, error)
+- Fetch API para llamadas HTTP
+- Event Loop
+
+### SDK for TypeScript
+
+API TypeScript para servicios de plataforma Dynatrace y funcionalidad AppEngine.
+
+**Todos los Client Packages disponibles:**
+
+| Package | Versión | Descripción | Uso principal |
+|---------|---------|-------------|---------------|
+| **@dynatrace-sdk/client-hub** | - | Catálogo de contenido (Apps, Extensions, Technologies) en el contexto del ambiente actual | Descubrir y listar recursos disponibles |
+| **@dynatrace-sdk/client-classic-environment-v2** | v4.2.1 | Dynatrace Environment API v2 (supersede v1) | Métricas, timeseries, tokens ActiveGate |
+| **@dynatrace-sdk/client-classic-environment-v1** | - | Dynatrace Environment API v1 (legacy) | Configuración de cluster, compatibilidad backwards |
+| **@dynatrace-sdk/client-notification-v2** | - | Define tipos de notificaciones en el contexto de una app | Diferenciar múltiples tipos de notificaciones |
+| **@dynatrace-sdk/client-platform-management-service** | - | Información básica read-only del ambiente actual | Metadatos del ambiente logueado |
+| **@dynatrace-sdk/client-automation** | - | Manage and run workflows con AutomationEngine API | Automatización, ejecución de workflows |
+| **@dynatrace-sdk/client-document** | - | Crear y manejar documentos, gestionar accesos | Almacenamiento de documentos, permisos |
+| **@dynatrace-sdk/client-query** | - | API para fetch records de Grail usando DQL | Queries de datos, dashboards |
+| **@dynatrace-sdk/client-state** | - | Almacenamiento key-value para persistir estado | Caching, app state, user state |
+| **@dynatrace-sdk/client-davis-analyzers** | - | Davis® AI predictiva y causal | Análisis AI/ML customizado |
+| **@dynatrace-sdk/client-app-settings-v2** | v1.1.3 | Retrieve, update y manage app settings | Configuración de app, secrets |
+| **@dynatrace-sdk/client-app-engine-registry** | - | Static files, settings schemas, documents | Registry de AppEngine |
+| **@dynatrace-sdk/app-environment** | - | Environment utilities | Variables de entorno, configuración |
+
+**Instalación:**
+```bash
+npm install @dynatrace-sdk/client-query
+npm install @dynatrace-sdk/client-state
+npm install @dynatrace-sdk/client-automation
+# ... etc
+```
+
+**Ejemplos de uso:**
+
+```typescript
+// Query client - Ejecutar DQL queries
+import { queryClient } from '@dynatrace-sdk/client-query';
+
+const result = await queryClient.query({
+  query: 'fetch logs | summarize count()',
+  timeframe: 'now-24h'
+});
+
+// State client - Cachear datos
+import { stateClient } from '@dynatrace-sdk/client-state';
+
+// Guardar estado
+await stateClient.setValue('myKey', { data: 'value' });
+
+// Recuperar estado
+const value = await stateClient.getValue('myKey');
+
+// Automation client - Ejecutar workflows
+import { automationClient } from '@dynatrace-sdk/client-automation';
+
+const result = await automationClient.executeWorkflow({
+  workflowId: 'my-workflow-id',
+  parameters: { /* ... */ }
+});
+
+// Davis AI - Análisis predictivo
+import { davisClient } from '@dynatrace-sdk/client-davis-analyzers';
+
+const analysis = await davisClient.executeAnalyzer({
+  analyzerType: 'forecast',
+  data: { /* time series data */ }
+});
+```
+
+### Metric Units
+
+Referencia de unidades métricas en Dynatrace Apps.
+
+---
+
+## Learn
+
+### React Style Guide
+
+Mejores prácticas para estilizar código React.
+
+### Reuse Code
+
+Reutilizar código dentro de tu app.
+
+---
+
+## Extensions
+
+### About Extensions
+
+Introducción a ingestar datos en Dynatrace con Extensions.
+
+### Add-on for VS Code
+
+Extensión de VS Code para desarrollar Extensions de Dynatrace.
+
+**Características:**
+- Desarrollo de Extensions
+- Integración con Dynatrace platform
+- Herramientas de debugging
+
+---
+
+## Recursos Oficiales
+
+- [Develop](https://developer.dynatrace.com/develop/)
+- [App Functions](https://developer.dynatrace.com/develop/app-functions/)
+- [Data Storage](https://developer.dynatrace.com/develop/data/)
+- [Deploy Your App](https://developer.dynatrace.com/develop/deploy-your-app/)
+- [Intents](https://developer.dynatrace.com/develop/intents/)
+- [Workflows](https://developer.dynatrace.com/develop/workflows/)
+- [Forecast with Davis AI](https://developer.dynatrace.com/develop/forecast-with-davis-ai/)
+- [JavaScript Runtime](https://developer.dynatrace.com/develop/javascript-runtime/)
+- [SDK for TypeScript](https://developer.dynatrace.com/develop/sdks/)
+- [React Guide](https://developer.dynatrace.com/develop/react/)
+- [TypeScript](https://developer.dynatrace.com/develop/typescript/)
+- [Privacy](https://developer.dynatrace.com/develop/privacy/)
+- [Security](https://developer.dynatrace.com/develop/security/)

@@ -1,0 +1,436 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# STRATO Design System - Guía Completa
+
+> Strato es el design system de Dynatrace, sucesor de Barista. Proporciona componentes React reutilizables, design tokens, iconos y patrones para construir Dynatrace Apps.
+
+## About this document (reference only)
+
+This file mirrors official Dynatrace Strato documentation for local/offline reference.
+
+- This document is NOT project policy.
+- Do not copy/paste component structures blindly; use it to understand capabilities and patterns.
+- If there is any mismatch between this document and the installed packages/types in this repository,
+  the repository’s installed dependencies and TypeScript types are the source of truth.
+- Project rules (quality gates, import boundaries, token restrictions) live in `AGENTS.md`.
+
+---
+
+## Estructura de Strato
+
+- **Foundations**: Conceptos de diseño, principios guías y características del lenguaje de diseño
+- **Components and tokens**: Componentes React reutilizables y design tokens
+- **Components preview**: Acceso temprano a desarrollos recientes (actualizaciones cada 2 semanas, breaking changes cada 3 meses)
+- **Patterns**: Mejores prácticas para componer interfaces e interacciones
+
+---
+
+## Foundations
+
+### Guided Interaction
+
+Proceso de ayudar a los usuarios a sentirse cómodos y confiados con nuevos productos a través del aprendizaje natural, intuitivo y en contexto.
+
+**Fases del journey del usuario:**
+1. **Discovery**: Crear conciencia de la app
+2. **First-time use**: Primera interacción
+3. **Aha moment**: Usuario entiende el valor de la app
+4. **Becoming a core user**: Aprendizaje activo hasta confianza
+5. **Core user**: Uso confiable y repetido
+6. **Becoming an expert**: Enfoque en eficiencia y features avanzados
+7. **Ambassador**: Promueve la app y testing de nuevos casos
+
+**Principios:**
+- Buen diseño es fundamento de guided interaction
+- Siempre colocar contenido en contexto
+- Permitir al usuario elegir su propio camino
+
+### Layout
+
+**Breakpoints:**
+- Mobile: 0 - 640px
+- Tablet: 641px - 960px
+- Desktop: 961px - 1920px
+- Widescreen: 1921px - ∞
+
+**Tipos de layout:**
+- **Centered**: Ancho máximo de 960px, ideal para contenido textual
+- **Full-width**: Sin restricción de ancho, ideal para apps con muchos datos
+
+**Jerarquía visual:**
+
+1. **Base**: Fondo de la app
+2. **Surfaces**: Estructura principal del contenido
+   - Elevación: Flat, Raised, Floating
+   - Inset spacing: 24px o 16px (dense)
+   - Interactividad: Cambian elevación por estado
+3. **Containers**: Destacan información importante
+   - 5 colores: Neutral, Primary, Success, Warning, Critical
+   - 3 niveles de énfasis: Default, Emphasized, Accent
+   - Inset spacing: 16px
+4. **Fields**: Elementos más atómicos
+   - 5 colores: Neutral, Primary, Success, Warning, Critical
+   - 3 niveles de énfasis: Default, Emphasized, Accent
+   - Inset spacing: 12px o menor
+5. **Dividers**: Separación visual sin color de fondo
+
+**Espaciado vertical:**
+- Grupos de elementos UI: 32px
+- Default entre elementos UI: 16px
+- Elementos relacionados cercanos: 8px
+- Texto relacionado cercano: 4px
+- Listas: 0px
+
+**Espaciado horizontal:**
+- Grupos de elementos UI: 32px
+- Default entre elementos UI: 16px
+- Elementos relacionados: 8px
+- Layouts densos: 4px
+
+### App Structure
+
+**Componente Page** - 4 regiones principales:
+
+1. **Header**: Navegación principal y acciones primarias
+2. **Sidebar**: Contenido que influence, cambie o filtre el main view
+3. **Main view**: Escenario principal del contenido
+4. **Detail view**: Información adicional en pantallas widescreen
+
+**AppHeader** - Componente esencial para UX:
+- App name: Retorno a home
+- Navigation: Navegación primaria
+- Actions: Acciones system-wide (settings, help, search, notifications)
+
+**TitleBar** - Título de página/sección:
+- Navigation: Breadcrumbs o back button
+- Prefix region: Imagen o icono
+- Title: Título principal
+- Subtitle: Información adicional
+- Suffix region: Acciones relacionadas
+
+### Data Visualization
+
+**Tipos de datos:**
+
+1. **Time series data**
+   - Timestamp data: `{start, value}`
+   - Timeframe data: `{start, end, value}`
+   - Charts: Line, Area, Bar, Band
+
+2. **Categorical data**
+   - Charts: Pie/Donut, Bar (grouped, stacked), Histogram, Treemap, Heatmap
+
+3. **KPI data**
+   - Charts: Single value, Meter bar, Multi meter bar
+
+4. **Geospatial data**
+   - Layers: Dot/bubble, Choropleth, Connection
+
+**Anatomía de un chart:**
+1. Value labels
+2. Chart tooltip
+3. Interactive toolbar (zoom, inspect, pan, download)
+4. Interactive legend
+5. Legend resize handle
+6. Axes
+7. Crosshair y Magnifiers
+8. Axis Description
+
+---
+
+## Components Estables
+
+### Buttons
+
+| Componente | Uso |
+|-----------|-----|
+| `Button` | Botón estándar |
+| `IntentButton` | Botón con intent/acción específica |
+
+### Content
+
+| Componente | Uso |
+|-----------|-----|
+| `ProgressBar` | Progreso lineal |
+| `ProgressCircle` | Progreso circular |
+| `Skeleton` | Placeholder de carga |
+| `SkeletonText` | Placeholder de texto en carga |
+
+### Core
+
+| Componente | Uso |
+|-----------|-----|
+| `AppRoot` | Raíz de la aplicación |
+| `FocusScope` | Manejo de foco |
+
+### Layouts
+
+| Componente | Uso |
+|-----------|-----|
+| `Container` | Contenedor con borde y fondo |
+| `Divider` | Separador visual |
+| `Flex` | Layout flexible horizontal/vertical |
+| `Grid` | Layout de grilla |
+| `Surface` | Superficie con elevación |
+| `useBreakpoint` | Hook para breakpoints |
+
+### Typography
+
+| Componente | Uso |
+|-----------|-----|
+| `Blockquote` | Cita de bloque |
+| `Code` | Código en línea |
+| `Emphasis` | Énfasis en texto |
+| `ExternalLink` | Link externo |
+| `Heading` | Encabezado |
+| `Highlight` | Texto destacado |
+| `Link` | Enlace |
+| `List` | Lista |
+| `Paragraph` | Párrafo |
+| `Strikethrough` | Texto tachado |
+| `Strong` | Texto importante |
+| `Text` | Texto genérico |
+| `TextEllipsis` | Texto con recorte |
+
+---
+
+## Components Preview
+
+### Buttons
+
+| Componente | Uso |
+|-----------|-----|
+| `IntentButton` | Botón con intent específico |
+| `NotifyButton` | Botón con notificación |
+| `RunQueryButton` | Botón para ejecutar consultas |
+| `ToggleButtonGroup` | Grupo de botones toggle |
+
+### Charts
+
+| Componente | Uso |
+|-----------|-----|
+| `AnnotationsChart` | Gráfico con anotaciones |
+| `CategoricalBarChart` | Gráfico de barras categórico |
+| `DonutChart` | Gráfico de dona |
+| `GaugeChart` | Gráfico gauge |
+| `HistogramChart` | Histograma |
+| `HoneycombChart` | Gráfico de panal |
+| `MeterBarChart` | Barra de medidor |
+| `MultiMeterBarChart` | Múltiples barras de medidor |
+| `PieChart` | Gráfico circular |
+| `ShareChartConfig` | Compartir configuración de gráfico |
+| `SingleValue` | Valor único |
+| `Sparkline` | Sparkline |
+| `TimeseriesChart` | Gráfico de series temporales |
+| `TreeMap` | Treemap |
+| `XYChart` | Gráfico XY |
+| `convertToTimeseries` | Convertir a series temporales |
+
+### Content
+
+| Componente | Uso |
+|-----------|-----|
+| `Accordion` | Acordeón expandible |
+| `AiLoadingIndicator` | Indicador de carga AI |
+| `Avatar` | Avatar de usuario |
+| `AvatarGroup` | Grupo de avatares |
+| `Chip` | Chip/etiqueta |
+| `ChipGroup` | Grupo de chips |
+| `CodeSnippet` | Snippet de código |
+| `EmptyState` | Estado vacío |
+| `ExpandableText` | Texto expandible |
+| `FeatureHighlight` | Destacar feature |
+| `HealthIndicator` | Indicador de salud |
+| `InformationOverlay` | Overlay informativo |
+| `KeyboardShortcut` | Atajo de teclado |
+| `KeyboardShortcutTooltip` | Tooltip de atajo |
+| `Markdown` | Renderizado Markdown |
+| `MessageContainer` | Contenedor de mensajes |
+| `Microguide` | Microguía |
+| `TerminologyOverlay` | Overlay de terminología |
+
+### Core
+
+| Componente/Hook | Uso |
+|-----------------|-----|
+| `OverlayContainer` | Contenedor de overlays |
+| `useBreakpointProps` | Props responsive por breakpoint |
+| `useContainerBreakpoint` | Breakpoint del contenedor |
+| `useContainerSize` | Tamaño del contenedor |
+| `useFocusRing` | Anillo de foco |
+| `useMergeRefs` | Mergear refs |
+| `useOverlayStacking` | Stacking de overlays |
+| `usePrevious` | Valor previo |
+| `useRovingFocus` | Foco roving |
+| `getFirstFocusableChild` | Primer hijo focusable |
+| `getLastFocusableChild` | Último hijo focusable |
+| `isFocusable` | Verificar si es focusable |
+| `parseTime` | Parsear tiempo |
+
+### Editors
+
+| Componente | Uso |
+|-----------|-----|
+| `CodeEditor` | Editor de código |
+| `DQLEditor` | Editor DQL |
+
+### Filters
+
+| Componente | Uso |
+|-----------|-----|
+| `FilterBar` | Barra de filtros |
+| `FilterField` | Campo de filtro |
+| `SegmentSelector` | Selector de segmentos |
+| `TimeframeSelector` | Selector de timeframe |
+
+### Forms
+
+| Componente | Uso |
+|-----------|-----|
+| `Checkbox` | Checkbox |
+| `DateTimePicker` | Selector de fecha/hora |
+| `FieldSet` | Fieldset |
+| `FormField` | Campo de formulario |
+| `Label` | Etiqueta |
+| `NumberInput` | Input numérico |
+| `PasswordInput` | Input de contraseña |
+| `Radio` | Radio button |
+| `SelectV2` | Select (v2) |
+| `Switch` | Switch toggle |
+| `TextArea` | Área de texto |
+| `TextInput` | Input de texto |
+| `ToggleButtonGroup` | Grupo de botones toggle |
+
+### Layouts
+
+| Componente | Uso |
+|-----------|-----|
+| `AppHeader` | Header de app |
+| `HelpMenu` | Menú de ayuda |
+| `InputGroup` | Grupo de inputs |
+| `Page` | Página completa |
+| `TitleBar` | Barra de título |
+
+### Navigation
+
+| Componente | Uso |
+|-----------|-----|
+| `AppLink` | Link de app |
+| `Breadcrumbs` | Breadcrumbs |
+| `Menu` | Menú |
+| `Tabs` | Pestañas |
+
+### Notifications
+
+| Componente | Uso |
+|-----------|-----|
+| `NotificationSettings` | Configuración de notificaciones |
+| `Toast` | Toast notification |
+
+### Overlays
+
+| Componente | Uso |
+|-----------|-----|
+| `Modal` | Modal |
+| `Overlay` | Overlay genérico |
+| `Sheet` | Sheet/lateral |
+| `Tooltip` | Tooltip |
+
+### Tables
+
+| Componente | Uso |
+|-----------|-----|
+| `DataTable` | Tabla de datos |
+| `SimpleTable` | Tabla simple |
+| `convertToColumns` | Convertir a columnas |
+
+---
+
+## Icons
+
+Biblioteca de iconos importable desde `@dynatrace/strato-icons`.
+
+**Uso básico:**
+```jsx
+import { IconName } from '@dynatrace/strato-icons';
+
+<IconName size="default" /> // small (16px), default (20px), large (32px)
+<IconName size={24} /> // Tamaño custom en px
+```
+
+**Accesibilidad:**
+```jsx
+<IconName aria-label="Descripción" aria-hidden="false" />
+<IconName aria-hidden="true" /> // No incluir en árbol de accesibilidad
+```
+
+**Categorías principales:**
+- UI: Arrows, Checkmark, Close, Delete, Edit, etc.
+- Data: Chart types, Analytics, DataTable, etc.
+- Navigation: Menu, Breadcrumbs, Tabs, etc.
+- Status: Success, Warning, Critical, Information, etc.
+- Technology: Cloud, Database, Network, API, etc.
+- Actions: Download, Upload, Copy, Refresh, etc.
+- Media: Play, Pause, Stop, Volume, Mute, etc.
+- Security: Lock, Key, Shield, Attack, Vulnerability, etc.
+- Communication: Mail, Chat, Call, Notification, etc.
+- File: Document, Folder, Image, Code, etc.
+
+---
+
+## Design Tokens
+
+Los design tokens almacenan variables visuales como colores, fuentes, espaciados, sombras, etc.
+
+**Uso:**
+```css
+/* Importar tokens */
+@import '@dynatrace/strato-design-tokens/tokens';
+
+/* Usar tokens */
+color: var(--dt-color-foreground-primary);
+background: var(--dt-color-surface-default);
+spacing: var(--dt-space-400);
+```
+
+**Categorías:**
+- Colores (foreground, background, border, semantic)
+- Tipografía (font-family, font-size, font-weight, line-height)
+- Espaciado (space tokens)
+- Sombras (box-shadow)
+- Bordes (border-radius)
+- Breakpoints
+- Transiciones
+
+---
+
+## Patterns
+
+### Filtering
+Patrones para crear experiencias de filtrado de datasets.
+
+### Forms and Validation
+Patrones para formularios y validación.
+
+### Loading and Saving
+Patrones para estados de carga y guardado.
+
+### Status and Health
+Patrones para mostrar estado y salud.
+
+---
+
+## Recursos
+
+- [About Strato Design System](https://developer.dynatrace.com/design/about-strato-design-system/)
+- [Components](https://developer.dynatrace.com/design/components/)
+- [Components preview](https://developer.dynatrace.com/design/components-preview/)
+- [Icons](https://developer.dynatrace.com/design/icons/)
+- [Data visualization](https://developer.dynatrace.com/design/data-visualization/)
+- [Layout](https://developer.dynatrace.com/design/layout/)
+- [App structure](https://developer.dynatrace.com/design/app-structure/)
+- [Guided interaction](https://developer.dynatrace.com/design/guided-interaction/introduction/)
