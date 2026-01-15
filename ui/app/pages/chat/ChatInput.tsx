@@ -16,7 +16,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled = false,
-  placeholder = "Send a message...",
+  placeholder = "Escribe un mensaje..."
 }) => {
   const [message, setMessage] = useState("");
 

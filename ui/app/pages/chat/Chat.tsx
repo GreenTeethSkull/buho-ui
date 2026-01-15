@@ -12,6 +12,7 @@ import { EmptyChat } from "./EmptyChat";
 import { Conversation, Message, Model } from "./types";
 
 const MOCK_MODELS: Model[] = [
+  { id: "buho", name: "Buho", description: "All in one incident management agent" },
   { id: "gpt-4", name: "GPT-4", description: "Most capable model" },
   { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", description: "Fast and efficient" },
   { id: "claude-3", name: "Claude 3", description: "Anthropic's latest model" },
@@ -42,7 +43,7 @@ export const Chat: React.FC = () => {
   const handleNewChat = () => {
     const newConversation: Conversation = {
       id: generateId(),
-      title: "New Chat",
+      title: "Nuevo Chat",
       messages: [],
       model: selectedModel,
       createdAt: new Date(),
@@ -126,7 +127,7 @@ export const Chat: React.FC = () => {
       id: generateId(),
       role: "assistant",
       content:
-        "This is a simulated response. In a real implementation, this would be connected to an AI backend service. The response would be generated based on your message and the selected model.",
+        "Esta es una respuesta simulada. En la implementacion real estara conectada al agente seleccionado y generara una respuesta basada en tu mensaje.",
       timestamp: new Date(),
     };
 

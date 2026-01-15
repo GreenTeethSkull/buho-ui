@@ -46,10 +46,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <Button.Prefix>
             <PlusIcon />
           </Button.Prefix>
-          New Chat
+          Nuevo Chat
         </Button>
         <TextInput
-          placeholder="Search conversations..."
+          placeholder="Buscar conversaciones..."
           value={searchQuery}
           onChange={onSearchChange}
         />
@@ -68,7 +68,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             padding={16}
             style={{ color: Colors.Text.Neutral.Subdued }}
           >
-            <Text>No conversations yet</Text>
+            <Text>No existen conversaciones</Text>
           </Flex>
         ) : (
           filteredConversations.map((conversation) => (
