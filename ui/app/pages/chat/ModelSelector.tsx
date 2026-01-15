@@ -8,24 +8,29 @@ interface ModelSelectorProps {
   models: Model[];
   selectedModel: string;
   onModelChange: (modelId: string) => void;
+  disabled?: boolean;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   models,
   selectedModel,
   onModelChange,
+  disabled = true,
 }) => {
   return (
     <Flex alignItems="center" gap={8}>
-      <Text>Model:</Text>
+      <Text>Agente:</Text>
       <Select
         value={selectedModel}
         onChange={(value) => onModelChange(value as string)}
+        disabled={disabled}
       >
         <SelectTrigger style={{ minWidth: "200px" }} />
         <SelectContent>
           {models.map((model) => (
-            <SelectOption key={model.id} value={model.id}>
+            <SelectOption key={model
+
+.id} value={model.id}>
               {model.name}
             </SelectOption>
           ))}

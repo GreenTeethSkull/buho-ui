@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text, Heading } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import { DavisAIIcon } from "@dynatrace/strato-icons";
 
 export const EmptyChat: React.FC = () => {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
   return (
     <Flex
       flexDirection="column"
@@ -35,17 +37,22 @@ export const EmptyChat: React.FC = () => {
           "Muestrame un analisis de logs,traces y excepciones del microservicio ms-ux-ma-miep-gestion-cliente",
           "Existen tickets en ServiceNow relacionados con errores en el microservicio ms-ne-notificacion-emision-rentas-vda",
           "Busca en los archivos postmortem si hemos tenido problemas en GuideWire anteriormente",
-        ].map((suggestion) => (
+        ].map((suggestion, index) => (
           <Flex
             key={suggestion}
             padding={12}
             flex="1 1 calc(50% - 16px)"
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
             style={{
-              background: Colors.Background.Container.Neutral.Default,
+              background: hoveredIndex === index 
+                ? Colors.Background.Container.Neutral.Emphasized 
+                : Colors.Background.Container.Neutral.Default,
               borderRadius: "8px",
               cursor: "pointer",
-              border: `1px solid ${Colors.Border.Neutral.Default}`,
+              border: `1px solid ${hoveredIndex === index ? Colors.Border.Neutral.DefaultHover : Colors.Border.Neutral.Default}`,
               boxSizing: "border-box",
+              transition: "background 0.2s ease, border-color 0.2s ease",
             }}
           >
             <Text>{suggestion}</Text>

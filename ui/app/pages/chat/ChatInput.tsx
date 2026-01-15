@@ -53,9 +53,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           padding: "8px 12px",
         }}
       >
-        <Button variant="default" disabled={disabled}>
+        {/* <Button variant="default" disabled={disabled}>
           <UploadIcon />
-        </Button>
+        </Button> */}
         <Flex style={{ flex: 1 }}>
           <TextArea
             value={message}

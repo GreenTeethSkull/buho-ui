@@ -173,6 +173,7 @@ export const Chat: React.FC = () => {
               models={MOCK_MODELS}
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
+              disabled = {true}
             />
           </Flex>
           <Flex alignItems="center" gap={8}>
@@ -181,9 +182,9 @@ export const Chat: React.FC = () => {
                 {activeConversation.messages.length} messages
               </Text>
             )}
-            <Button variant="default">
+            {/* <Button variant="default">
               <SettingIcon />
-            </Button>
+            </Button> */}
           </Flex>
         </Flex>
 
