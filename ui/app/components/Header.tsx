@@ -7,12 +7,12 @@ export const Header = () => {
     <AppHeader>
       <AppHeader.NavItems>
         <AppHeader.AppNavLink as={Link} to="/" />
-        <AppHeader.NavItem as={Link} to="/chat">
+        {/* <AppHeader.NavItem as={Link} to="/chat">
           AI Chat
         </AppHeader.NavItem>
         <AppHeader.NavItem as={Link} to="/data">
           Explore Data
-        </AppHeader.NavItem>
+        </AppHeader.NavItem> */}
       </AppHeader.NavItems>
     </AppHeader>
   );

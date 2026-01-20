@@ -4,8 +4,18 @@ import { Text, Heading } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import { DavisAIIcon } from "@dynatrace/strato-icons";
 
-export const EmptyChat: React.FC = () => {
+interface EmptyChatProps {
+  onSuggestionClick?: (message: string) => void;
+}
+
+export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const handleSuggestionClick = (suggestion: string) => {
+    if (onSuggestionClick) {
+      onSuggestionClick(suggestion);
+    }
+  };
 
   return (
     <Flex
@@ -44,6 +54,7 @@ export const EmptyChat: React.FC = () => {
             flex="1 1 calc(50% - 16px)"
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
+            onClick={() => handleSuggestionClick(suggestion)}
             style={{
               background: hoveredIndex === index 
                 ? Colors.Background.Container.Neutral.Emphasized 

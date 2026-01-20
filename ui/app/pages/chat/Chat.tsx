@@ -3,7 +3,7 @@ import { Flex } from "@dynatrace/strato-components/layouts";
 import { Button } from "@dynatrace/strato-components/buttons";
 import { Text } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
-import { SettingIcon, MenuIcon } from "@dynatrace/strato-icons";
+import { SettingIcon, MenuIcon, CloseSidebarIcon, OpenSidebarIcon } from "@dynatrace/strato-icons";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -12,11 +12,8 @@ import { EmptyChat } from "./EmptyChat";
 import { Conversation, Message, Model } from "./types";
 
 const MOCK_MODELS: Model[] = [
-  { id: "buho", name: "Buho", description: "All in one incident management agent" },
-  { id: "gpt-4", name: "GPT-4", description: "Most capable model" },
-  { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", description: "Fast and efficient" },
-  { id: "claude-3", name: "Claude 3", description: "Anthropic's latest model" },
-  { id: "llama-2", name: "Llama 2", description: "Open source model" },
+  { id: "lucy", name: "Lucy", description: "All in one incident management agent" },
+  { id: "buho", name: "Buho", description: "All in one incident management agent" }
 ];
 
 export const Chat: React.FC = () => {
@@ -107,11 +104,11 @@ export const Chat: React.FC = () => {
       prev.map((c) =>
         c.id === activeConversationId
           ? {
-              ...c,
-              messages: [...c.messages, userMessage],
-              title: c.messages.length === 0 ? content.substring(0, 30) + (content.length > 30 ? "..." : "") : c.title,
-              updatedAt: new Date(),
-            }
+            ...c,
+            messages: [...c.messages, userMessage],
+            title: c.messages.length === 0 ? content.substring(0, 30) + (content.length > 30 ? "..." : "") : c.title,
+            updatedAt: new Date(),
+          }
           : c
       )
     );
@@ -142,7 +139,8 @@ export const Chat: React.FC = () => {
   };
 
   return (
-    <Flex style={{ height: "calc(100vh - 56px)", overflow: "hidden" }}>
+    // <Flex style={{ height: "calc(100vh - 56px)", overflow: "hidden" }}>
+    <Flex style={{ height: "100%", overflow: "hidden" }}>
       {sidebarOpen && (
         <ChatSidebar
           conversations={conversations}
@@ -167,13 +165,13 @@ export const Chat: React.FC = () => {
         >
           <Flex alignItems="center" gap={12}>
             <Button variant="default" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              <MenuIcon />
+              {sidebarOpen ? <CloseSidebarIcon /> : <OpenSidebarIcon />}
             </Button>
             <ModelSelector
               models={MOCK_MODELS}
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
-              disabled = {true}
+              disabled={false}
             />
           </Flex>
           <Flex alignItems="center" gap={8}>
@@ -197,7 +195,7 @@ export const Chat: React.FC = () => {
           }}
         >
           {!activeConversation || activeConversation.messages.length === 0 ? (
-            <EmptyChat />
+            <EmptyChat onSuggestionClick={handleSendMessage} />
           ) : (
             <Flex flexDirection="column" gap={8} padding={16} style={{ maxWidth: "900px", margin: "0 auto", width: "100%" }}>
               {activeConversation.messages.map((message) => (
