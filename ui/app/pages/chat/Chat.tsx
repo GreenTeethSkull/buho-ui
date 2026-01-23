@@ -1,20 +1,30 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Button } from "@dynatrace/strato-components/buttons";
 import { Text } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
-import { SettingIcon, MenuIcon, CloseSidebarIcon, OpenSidebarIcon } from "@dynatrace/strato-icons";
+import { CloseSidebarIcon, OpenSidebarIcon } from "@dynatrace/strato-icons";
+import { ProgressCircle } from "@dynatrace/strato-components/content";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ModelSelector } from "./ModelSelector";
 import { EmptyChat } from "./EmptyChat";
 import { Conversation, Message, Model } from "./types";
+import { useChatSession } from "../../hooks/useChatSession";
+import type { ConversationMessage } from "../../hooks/useConversationDocuments";
 
 const MOCK_MODELS: Model[] = [
   { id: "lucy", name: "Lucy", description: "All in one incident management agent" },
   { id: "buho", name: "Buho", description: "All in one incident management agent" }
 ];
+
+const mapConversationMessageToMessage = (msg: ConversationMessage, index: number): Message => ({
+  id: `msg-${index}-${msg.timestamp}`,
+  role: msg.role === "user" ? "user" : "assistant",
+  content: msg.text,
+  timestamp: new Date(msg.timestamp),
+});
 
 export const Chat: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -22,8 +32,18 @@ export const Chat: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState(MOCK_MODELS[0].id);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const {
+    sessionState,
+    startNewSession,
+    resumeSession,
+    sendMessage,
+    endSession,
+    getConversationHistory,
+    refetchList,
+  } = useChatSession();
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
@@ -33,113 +53,80 @@ export const Chat: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [activeConversation?.messages]);
+  }, [sessionState.messages]);
 
-  const generateId = () => Math.random().toString(36).substring(2, 15);
-
-  const handleNewChat = () => {
-    const newConversation: Conversation = {
-      id: generateId(),
-      title: "Nuevo Chat",
-      messages: [],
-      model: selectedModel,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+  useEffect(() => {
+    const loadHistory = async () => {
+      await refetchList();
+      const history = getConversationHistory();
+      const mappedConversations: Conversation[] = history.map((doc) => ({
+        id: doc.id,
+        title: doc.name || "Conversación",
+        messages: [],
+        model: selectedModel,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+      setConversations(mappedConversations);
     };
-    setConversations((prev) => [newConversation, ...prev]);
-    setActiveConversationId(newConversation.id);
-  };
+    loadHistory();
+  }, []);
 
-  const handleSelectConversation = (id: string) => {
-    setActiveConversationId(id);
-  };
-
-  const handleDeleteConversation = (id: string) => {
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (activeConversationId === id) {
-      setActiveConversationId(null);
-    }
-  };
-
-  const handleSendMessage = async (content: string) => {
-    if (!activeConversationId) {
+  const handleNewChat = useCallback(async () => {
+    setIsInitializing(true);
+    endSession();
+    const success = await startNewSession();
+    if (success && sessionState.documentId) {
       const newConversation: Conversation = {
-        id: generateId(),
-        title: content.substring(0, 30) + (content.length > 30 ? "..." : ""),
+        id: sessionState.documentId,
+        title: "Nuevo Chat",
         messages: [],
         model: selectedModel,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
       setConversations((prev) => [newConversation, ...prev]);
-      setActiveConversationId(newConversation.id);
+      setActiveConversationId(sessionState.documentId);
+    }
+    setIsInitializing(false);
+  }, [startNewSession, endSession, sessionState.documentId, selectedModel]);
 
-      const userMessage: Message = {
-        id: generateId(),
-        role: "user",
-        content,
-        timestamp: new Date(),
-      };
+  const handleSelectConversation = useCallback(async (id: string) => {
+    setActiveConversationId(id);
+  }, []);
 
+  const handleDeleteConversation = useCallback((id: string) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (activeConversationId === id) {
+      setActiveConversationId(null);
+      endSession();
+    }
+  }, [activeConversationId, endSession]);
+
+  const handleSendMessage = useCallback(async (content: string) => {
+    if (!sessionState.isActive) {
+      setIsInitializing(true);
+      const success = await startNewSession();
+      setIsInitializing(false);
+      if (!success) return;
+    }
+
+    await sendMessage(content);
+
+    if (activeConversation && activeConversation.messages.length === 0) {
       setConversations((prev) =>
         prev.map((c) =>
-          c.id === newConversation.id
-            ? { ...c, messages: [...c.messages, userMessage], updatedAt: new Date() }
+          c.id === activeConversationId
+            ? { ...c, title: content.substring(0, 30) + (content.length > 30 ? "..." : "") }
             : c
         )
       );
-
-      simulateResponse(newConversation.id);
-      return;
     }
+  }, [sessionState.isActive, startNewSession, sendMessage, activeConversation, activeConversationId]);
 
-    const userMessage: Message = {
-      id: generateId(),
-      role: "user",
-      content,
-      timestamp: new Date(),
-    };
-
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeConversationId
-          ? {
-            ...c,
-            messages: [...c.messages, userMessage],
-            title: c.messages.length === 0 ? content.substring(0, 30) + (content.length > 30 ? "..." : "") : c.title,
-            updatedAt: new Date(),
-          }
-          : c
-      )
-    );
-
-    simulateResponse(activeConversationId);
-  };
-
-  const simulateResponse = async (conversationId: string) => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-    const assistantMessage: Message = {
-      id: generateId(),
-      role: "assistant",
-      content:
-        "Esta es una respuesta simulada. En la implementacion real estara conectada al agente seleccionado y generara una respuesta basada en tu mensaje.",
-      timestamp: new Date(),
-    };
-
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === conversationId
-          ? { ...c, messages: [...c.messages, assistantMessage], updatedAt: new Date() }
-          : c
-      )
-    );
-    setIsLoading(false);
-  };
+  const displayMessages: Message[] = sessionState.messages.map(mapConversationMessageToMessage);
 
   return (
-    // <Flex style={{ height: "calc(100vh - 56px)", overflow: "hidden" }}>
     <Flex style={{ height: "100%", overflow: "hidden" }}>
       {sidebarOpen && (
         <ChatSidebar
@@ -171,18 +158,15 @@ export const Chat: React.FC = () => {
               models={MOCK_MODELS}
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
-              disabled={false}
+              disabled={sessionState.isActive}
             />
           </Flex>
           <Flex alignItems="center" gap={8}>
-            {activeConversation && (
+            {sessionState.isActive && (
               <Text style={{ color: Colors.Text.Neutral.Subdued }}>
-                {activeConversation.messages.length} messages
+                {sessionState.messages.length} messages
               </Text>
             )}
-            {/* <Button variant="default">
-              <SettingIcon />
-            </Button> */}
           </Flex>
         </Flex>
 
@@ -194,26 +178,27 @@ export const Chat: React.FC = () => {
             background: Colors.Background.Base.Default,
           }}
         >
-          {!activeConversation || activeConversation.messages.length === 0 ? (
+          {isInitializing ? (
+            <Flex justifyContent="center" alignItems="center" style={{ flex: 1 }}>
+              <ProgressCircle />
+            </Flex>
+          ) : displayMessages.length === 0 ? (
             <EmptyChat onSuggestionClick={handleSendMessage} />
           ) : (
             <Flex flexDirection="column" gap={8} padding={16} style={{ maxWidth: "900px", margin: "0 auto", width: "100%" }}>
-              {activeConversation.messages.map((message) => (
+              {displayMessages.map((message) => (
                 <ChatMessage key={message.id} message={message} />
               ))}
-              {isLoading && (
-                <Flex padding={16} alignItems="center" gap={8}>
-                  <Text style={{ color: Colors.Text.Neutral.Subdued }}>
-                    Assistant is typing...
-                  </Text>
-                </Flex>
-              )}
               <div ref={messagesEndRef} />
             </Flex>
           )}
         </Flex>
 
-        <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          disabled={isInitializing}
+          placeholder="Escribe un mensaje..."
+        />
       </Flex>
     </Flex>
   );

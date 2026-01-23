@@ -8,7 +8,9 @@
     "id": "my.sre.agents",
     "scopes": [
       { "name": "storage:logs:read", "comment": "default template" },
-      { "name": "storage:buckets:read", "comment": "default template" }
+      { "name": "storage:buckets:read", "comment": "default template" },
+      { "name": "document:documents:read", "comment": "default template" },
+      { "name": "document:documents:write", "comment": "default template" }
     ]
   }
 }
