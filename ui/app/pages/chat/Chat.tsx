@@ -1,51 +1,41 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Flex } from "@dynatrace/strato-components/layouts";
 import { Button } from "@dynatrace/strato-components/buttons";
+import { ProgressCircle } from "@dynatrace/strato-components/content";
+import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import { CloseSidebarIcon, OpenSidebarIcon } from "@dynatrace/strato-icons";
-import { ProgressCircle } from "@dynatrace/strato-components/content";
-import { ChatSidebar } from "./ChatSidebar";
-import { ChatMessage } from "./ChatMessage";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import type { ConversationDocument, ConversationMessage, Model } from "../../domain/conversation";
+import { useConversationContent, useConversationManager } from "../../hooks/useConversationManager";
+import { useConversationsList } from "../../hooks/useConversationsList";
 import { ChatInput } from "./ChatInput";
-import { ModelSelector } from "./ModelSelector";
+import { ChatMessage } from "./ChatMessage";
+import { ChatSidebar, SidebarConversation } from "./ChatSidebar";
 import { EmptyChat } from "./EmptyChat";
-import { Conversation, Message, Model } from "./types";
-import { useChatSession } from "../../hooks/useChatSession";
-import type { ConversationMessage } from "../../hooks/useConversationDocuments";
+import { ModelSelector } from "./ModelSelector";
+import type { DocumentMetaData } from "@dynatrace-sdk/client-document";
 
 const MOCK_MODELS: Model[] = [
   { id: "lucy", name: "Lucy", description: "All in one incident management agent" },
   { id: "buho", name: "Buho", description: "All in one incident management agent" }
 ];
 
-const mapConversationMessageToMessage = (msg: ConversationMessage, index: number): Message => ({
-  id: `msg-${index}-${msg.timestamp}`,
-  role: msg.role === "user" ? "user" : "assistant",
-  content: msg.text,
-  timestamp: new Date(msg.timestamp),
-});
-
 export const Chat: React.FC = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [conversations, setConversations] = useState<SidebarConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(MOCK_MODELS[0].id);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const {
-    sessionState,
-    startNewSession,
-    resumeSession,
-    sendMessage,
-    endSession,
-    getConversationHistory,
-    refetchList,
-  } = useChatSession();
+  const { conversations: conversationsList, refetch: refetchConversations } = useConversationsList();
+  const { createConversation, deleteConversation, updateConversation } = useConversationManager();
 
-  const activeConversation = conversations.find((c) => c.id === activeConversationId);
+  const { document: selectedDoc, isLoading: isLoadingDoc } = useConversationContent(activeConversationId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -53,78 +43,206 @@ export const Chat: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [sessionState.messages]);
+  }, [messages]);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      await refetchList();
-      const history = getConversationHistory();
-      const mappedConversations: Conversation[] = history.map((doc) => ({
+    if (conversationsList) {
+      const mappedConversations: SidebarConversation[] = conversationsList.map((doc: DocumentMetaData) => ({
         id: doc.id,
         title: doc.name || "Conversación",
-        messages: [],
-        model: selectedModel,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        updatedAt: doc.modificationInfo?.lastModifiedTime ? new Date(doc.modificationInfo.lastModifiedTime) : new Date(),
+        version: doc.version,
       }));
+      // Sort by last modified (newest first)
+      mappedConversations.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       setConversations(mappedConversations);
+    }
+  }, [conversationsList, selectedModel]);
+
+  useEffect(() => {
+    const urlId = searchParams.get("id");
+    if (urlId && urlId !== activeConversationId) {
+        setActiveConversationId(urlId);
+    }
+  }, [searchParams, activeConversationId]);
+
+  useEffect(() => {
+    const loadContent = async () => {
+        console.log("loadContent effect", { activeConversationId, selectedDoc, isInitializing });
+        if (!activeConversationId) {
+            setMessages([]);
+            return;
+        }
+
+        // If doc is loading, don't clear messages yet unless we are switching to a known empty state
+        if (!selectedDoc) {
+             console.log("Doc loading or not found yet");
+             return;
+        }
+
+        // Verify that the loaded document matches the active conversation ID
+        if (selectedDoc.metadata?.id !== activeConversationId) {
+             console.log("Doc ID mismatch", selectedDoc.metadata?.id, activeConversationId);
+             return;
+        }
+
+        try {
+            if (!selectedDoc.content) {
+                 console.log("Doc has no content");
+                 return;
+            }
+
+            const contentText = await selectedDoc.content.get("text");
+            const contentJson = JSON.parse(contentText) as ConversationDocument;
+
+            console.log("Loaded content messages:", contentJson.messages?.length);
+
+            if (contentJson && Array.isArray(contentJson.messages)) {
+                // Only update if we have messages, or if we really want to clear.
+                // To avoid clearing optimistic updates if fetch is slightly delayed/empty:
+                if (contentJson.messages.length > 0) {
+                    setMessages(contentJson.messages);
+                } else if (messages.length === 0) {
+                    // Only clear if we have nothing locally either (truly empty)
+                    setMessages([]);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse document content", e);
+            // Don't wipe messages on error to preserve optimistic state if possible
+        }
     };
-    loadHistory();
-  }, []);
 
-  const handleNewChat = useCallback(async () => {
-    setIsInitializing(true);
-    endSession();
-    const success = await startNewSession();
-    if (success && sessionState.documentId) {
-      const newConversation: Conversation = {
-        id: sessionState.documentId,
-        title: "Nuevo Chat",
-        messages: [],
-        model: selectedModel,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setConversations((prev) => [newConversation, ...prev]);
-      setActiveConversationId(sessionState.documentId);
-    }
-    setIsInitializing(false);
-  }, [startNewSession, endSession, sessionState.documentId, selectedModel]);
+    void loadContent();
+  }, [selectedDoc, activeConversationId, messages.length, isInitializing]);
 
-  const handleSelectConversation = useCallback(async (id: string) => {
+  const handleNewChat = useCallback(() => {
+    // Just clear state to show welcome screen
+    setActiveConversationId(null);
+    setSearchParams({});
+    setMessages([]);
+  }, [setSearchParams]);
+
+  const handleSelectConversation = useCallback((id: string) => {
+    setSearchParams({ id });
     setActiveConversationId(id);
-  }, []);
+  }, [setSearchParams]);
 
-  const handleDeleteConversation = useCallback((id: string) => {
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (activeConversationId === id) {
-      setActiveConversationId(null);
-      endSession();
+  const handleDeleteConversation = useCallback(async (id: string) => {
+    try {
+        const conversationToDelete = conversations.find(c => c.id === id);
+        if (!conversationToDelete) return;
+
+        // Optimistic UI update
+        setConversations((prev) => prev.filter((c) => c.id !== id));
+        if (activeConversationId === id) {
+          setActiveConversationId(null);
+          setSearchParams({});
+          setMessages([]);
+        }
+
+        // Soft delete using manager
+        const success = await deleteConversation(id, conversationToDelete.version);
+
+        if (success) {
+            // Success toast is handled by manager
+            refetchConversations();
+        } else {
+            // Revert optimistic update if needed, or rely on refetch
+            refetchConversations();
+        }
+
+    } catch (error) {
+        console.error("Error deleting conversation", error);
+        refetchConversations();
     }
-  }, [activeConversationId, endSession]);
+  }, [conversations, activeConversationId, setSearchParams, deleteConversation, refetchConversations]);
 
   const handleSendMessage = useCallback(async (content: string) => {
-    if (!sessionState.isActive) {
-      setIsInitializing(true);
-      const success = await startNewSession();
-      setIsInitializing(false);
-      if (!success) return;
+    // If no active chat, create one first
+    let currentDocId = activeConversationId;
+
+    if (!currentDocId) {
+        setIsInitializing(true);
+        const randomId = Math.random().toString(36).substring(7);
+        const newDocName = `Chat ${randomId}`;
+        const now = new Date().toISOString();
+
+        const initialMessages: ConversationMessage[] = [{
+            role: "user",
+            content: content,
+            timestamp: now
+        }];
+
+        const docContent: ConversationDocument = {
+            conversationId: randomId,
+            modelId: selectedModel,
+            messages: initialMessages,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        console.log("Creating new conversation...");
+        const result = await createConversation({
+            id: randomId,
+            name: content.substring(0, 30) || newDocName,
+            initialContent: docContent
+        });
+        console.log("Create result:", result);
+
+        if (result?.id) {
+            console.log("Chat: URL Update Triggered with ID:", result.id);
+            currentDocId = result.id;
+            setSearchParams({ id: result.id });
+            setActiveConversationId(result.id);
+            setMessages(initialMessages);
+            refetchConversations();
+        } else {
+            console.error("Failed to get ID from created conversation");
+        }
+        setIsInitializing(false);
+        // return; // Explicitly returning nothing is consistent with void, but 'return;' is fine in async func returning Promise<void>.
+        // Just ensuring linter is happy.
     }
 
-    await sendMessage(content);
+    const newMessage: ConversationMessage = {
+        role: "user",
+        content: content,
+        timestamp: new Date().toISOString(),
+    };
 
-    if (activeConversation && activeConversation.messages.length === 0) {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeConversationId
-            ? { ...c, title: content.substring(0, 30) + (content.length > 30 ? "..." : "") }
-            : c
-        )
-      );
+    const updatedMessages = [...messages, newMessage];
+    setMessages(updatedMessages); // Optimistic update
+
+    if (selectedDoc && currentDocId) {
+        try {
+             // Reconstruct full document content
+             const currentContentText = await selectedDoc.content?.get("text");
+             const currentContent = currentContentText ? JSON.parse(currentContentText) as ConversationDocument : null;
+
+             const updatedContent: ConversationDocument = {
+                 conversationId: currentContent?.conversationId || (selectedDoc.metadata?.name ?? "chat"),
+                 modelId: currentContent?.modelId || selectedModel,
+                 messages: updatedMessages,
+                 details: currentContent?.details,
+                 updatedAt: new Date().toISOString(),
+                 createdAt: currentContent?.createdAt || new Date().toISOString(),
+             };
+
+             await updateConversation(
+                 currentDocId,
+                 selectedDoc.metadata?.version ?? "1",
+                 selectedDoc.metadata?.name ?? "Chat",
+                 updatedContent
+             );
+        } catch (e) {
+            console.error("Failed to save message", e);
+        }
     }
-  }, [sessionState.isActive, startNewSession, sendMessage, activeConversation, activeConversationId]);
 
-  const displayMessages: Message[] = sessionState.messages.map(mapConversationMessageToMessage);
+  }, [activeConversationId, createConversation, updateConversation, messages, refetchConversations, selectedDoc, setSearchParams, selectedModel]);
+
+  // const displayMessages: Message[] = messages.map(mapConversationMessageToMessage);
 
   return (
     <Flex style={{ height: "100%", overflow: "hidden" }}>
@@ -134,7 +252,7 @@ export const Chat: React.FC = () => {
           activeConversationId={activeConversationId}
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}
-          onDeleteConversation={handleDeleteConversation}
+          onDeleteConversation={(id) => void handleDeleteConversation(id)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
@@ -158,15 +276,13 @@ export const Chat: React.FC = () => {
               models={MOCK_MODELS}
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
-              disabled={sessionState.isActive}
+              disabled={false}
             />
           </Flex>
           <Flex alignItems="center" gap={8}>
-            {sessionState.isActive && (
-              <Text style={{ color: Colors.Text.Neutral.Subdued }}>
-                {sessionState.messages.length} messages
-              </Text>
-            )}
+            <Text style={{ color: Colors.Text.Neutral.Subdued }}>
+                {messages.length} messages
+            </Text>
           </Flex>
         </Flex>
 
@@ -178,16 +294,16 @@ export const Chat: React.FC = () => {
             background: Colors.Background.Base.Default,
           }}
         >
-          {isInitializing ? (
+          {isInitializing || (isLoadingDoc && activeConversationId && messages.length === 0) ? (
             <Flex justifyContent="center" alignItems="center" style={{ flex: 1 }}>
               <ProgressCircle />
             </Flex>
-          ) : displayMessages.length === 0 ? (
-            <EmptyChat onSuggestionClick={handleSendMessage} />
+          ) : messages.length === 0 ? (
+            <EmptyChat onSuggestionClick={(msg) => void handleSendMessage(msg)} />
           ) : (
             <Flex flexDirection="column" gap={8} padding={16} style={{ maxWidth: "900px", margin: "0 auto", width: "100%" }}>
-              {displayMessages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
+              {messages.map((message, index) => (
+                <ChatMessage key={`${index}-${message.timestamp}`} message={message} />
               ))}
               <div ref={messagesEndRef} />
             </Flex>
@@ -195,7 +311,7 @@ export const Chat: React.FC = () => {
         </Flex>
 
         <ChatInput
-          onSendMessage={handleSendMessage}
+          onSendMessage={(msg) => void handleSendMessage(msg)}
           disabled={isInitializing}
           placeholder="Escribe un mensaje..."
         />
