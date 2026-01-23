@@ -5,7 +5,7 @@ import { TextArea } from "@dynatrace/strato-components-preview/forms";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import Borders from "@dynatrace/strato-design-tokens/borders";
 import BoxShadows from "@dynatrace/strato-design-tokens/box-shadows";
-import { ArrowRightIcon, UploadIcon } from "@dynatrace/strato-icons";
+import { ArrowRightIcon } from "@dynatrace/strato-icons";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;

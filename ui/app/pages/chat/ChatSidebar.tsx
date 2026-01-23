@@ -6,10 +6,16 @@ import { Text } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import Borders from "@dynatrace/strato-design-tokens/borders";
 import { PlusIcon, ChatIcon, DeleteIcon } from "@dynatrace/strato-icons";
-import { Conversation } from "./types";
+
+export interface SidebarConversation {
+  id: string;
+  title: string;
+  version: string; // Needed for delete
+  updatedAt: Date; // Needed for sorting
+}
 
 interface ChatSidebarProps {
-  conversations: Conversation[];
+  conversations: SidebarConversation[];
   activeConversationId: string | null;
   onSelectConversation: (id: string) => void;
   onNewChat: () => void;

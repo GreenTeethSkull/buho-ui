@@ -2,7 +2,7 @@ import React from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Select, SelectOption, SelectContent, SelectTrigger } from "@dynatrace/strato-components-preview/forms";
 import { Text } from "@dynatrace/strato-components/typography";
-import { Model } from "./types";
+import type { Model } from "../../domain/conversation";
 
 interface ModelSelectorProps {
   models: Model[];
@@ -28,9 +28,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         <SelectTrigger style={{ minWidth: "200px" }} />
         <SelectContent>
           {models.map((model) => (
-            <SelectOption key={model
-
-.id} value={model.id}>
+            <SelectOption key={model.id} value={model.id}>
               {model.name}
             </SelectOption>
           ))}

@@ -4,10 +4,10 @@ import { Text, Paragraph } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import Borders from "@dynatrace/strato-design-tokens/borders";
 import { UserSessionsIcon, DavisAIIcon } from "@dynatrace/strato-icons";
-import { Message } from "./types";
+import type { ConversationMessage } from "../../domain/conversation";
 
 interface ChatMessageProps {
-  message: Message;
+  message: ConversationMessage;
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
