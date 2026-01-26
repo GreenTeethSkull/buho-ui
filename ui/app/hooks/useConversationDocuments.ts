@@ -1,16 +1,14 @@
 import { useCallback } from "react";
+import { documentsClient } from "@dynatrace-sdk/client-document";
 import type { DocumentMetaData } from "@dynatrace-sdk/client-document";
 import { PlatformBinary } from "@dynatrace-sdk/http-client";
-import {
-    useCreateDocument,
-    useUpdateDocument,
-    useListDocuments,
-} from "@dynatrace-sdk/react-hooks";
+import { useListDocuments } from "@dynatrace-sdk/react-hooks";
 
 export interface ConversationMessage {
-    role: "user" | "model";
-    text: string;
+    role: "user" | "assistant" | "system";
+    content: string;
     timestamp: string;
+    model?: string;
 }
 
 export interface ConversationDocument {
@@ -23,8 +21,6 @@ export interface ConversationDocument {
 const CONVERSATION_TYPE = "buho-conversation";
 
 export const useConversationDocuments = () => {
-    const { execute: createDoc, isLoading: isCreating } = useCreateDocument();
-    const { execute: updateDoc, isLoading: isUpdating } = useUpdateDocument();
     const {
         data: documentsList,
         isLoading: isListLoading,
@@ -36,6 +32,7 @@ export const useConversationDocuments = () => {
 
     const createConversationDocument = useCallback(
         async (conversationId: string): Promise<string | null> => {
+            console.log("[useConversationDocuments] Creating document for conversationId:", conversationId);
             try {
                 const now = new Date().toISOString();
                 const content: ConversationDocument = {
@@ -45,7 +42,10 @@ export const useConversationDocuments = () => {
                     updatedAt: now,
                 };
 
-                const result = await createDoc({
+                console.log("[useConversationDocuments] Document content:", content);
+                console.log("[useConversationDocuments] Calling documentsClient.createDocument...");
+
+                const result = await documentsClient.createDocument({
                     body: {
                         name: `Conversation ${conversationId}`,
                         type: CONVERSATION_TYPE,
@@ -53,40 +53,21 @@ export const useConversationDocuments = () => {
                     },
                 });
 
-                await refetchList();
-                return (result as DocumentMetaData | undefined)?.id ?? null;
+                console.log("[useConversationDocuments] createDocument result:", result);
+
+                if (!result?.id) {
+                    console.error("[useConversationDocuments] No document ID in result");
+                    return null;
+                }
+
+                console.log("[useConversationDocuments] Document created with ID:", result.id);
+                return result.id;
             } catch (error) {
-                console.error("Failed to create conversation document:", error);
+                console.error("[useConversationDocuments] Error creating conversation document:", error);
                 return null;
             }
         },
-        [createDoc, refetchList]
-    );
-
-    const updateConversationDocument = useCallback(
-        async (
-            documentId: string,
-            version: string,
-            name: string,
-            content: ConversationDocument
-        ): Promise<boolean> => {
-            try {
-                content.updatedAt = new Date().toISOString();
-                await updateDoc({
-                    id: documentId,
-                    optimisticLockingVersion: version,
-                    body: {
-                        name,
-                        content: PlatformBinary.fromJson(content),
-                    },
-                });
-                return true;
-            } catch (error) {
-                console.error("Failed to update conversation document:", error);
-                return false;
-            }
-        },
-        [updateDoc]
+        []
     );
 
     const addMessageToConversation = useCallback(
@@ -95,37 +76,68 @@ export const useConversationDocuments = () => {
             version: string,
             name: string,
             currentContent: ConversationDocument,
-            role: "user" | "model",
-            text: string
+            role: "user" | "assistant" | "system",
+            content: string
         ): Promise<boolean> => {
+            console.log("[useConversationDocuments] Adding message to document:", documentId);
             const newMessage: ConversationMessage = {
                 role,
-                text,
+                content,
                 timestamp: new Date().toISOString(),
             };
 
             const updatedContent: ConversationDocument = {
                 ...currentContent,
                 messages: [...currentContent.messages, newMessage],
+                updatedAt: new Date().toISOString(),
             };
 
-            return updateConversationDocument(documentId, version, name, updatedContent);
+            try {
+                console.log("[useConversationDocuments] Updating document with version:", version);
+                await documentsClient.updateDocument({
+                    id: documentId,
+                    optimisticLockingVersion: version,
+                    body: {
+                        name,
+                        content: PlatformBinary.fromJson(updatedContent),
+                    },
+                });
+                console.log("[useConversationDocuments] Document updated successfully");
+                return true;
+            } catch (error) {
+                console.error("[useConversationDocuments] Error updating conversation document:", error);
+                return false;
+            }
         },
-        [updateConversationDocument]
+        []
     );
 
-    const getConversationHistory = useCallback(() => {
-        return documentsList?.documents ?? [];
-    }, [documentsList]);
+    const getConversationContent = useCallback(
+        async (documentId: string): Promise<ConversationDocument | null> => {
+            console.log("[useConversationDocuments] Getting content for document:", documentId);
+            try {
+                const doc = await documentsClient.getDocument({ id: documentId });
+                if (doc.content) {
+                    const contentText = await doc.content.get("text");
+                    const content = JSON.parse(contentText) as ConversationDocument;
+                    console.log("[useConversationDocuments] Content retrieved:", content);
+                    return content;
+                }
+                return null;
+            } catch (error) {
+                console.error("[useConversationDocuments] Error fetching conversation content:", error);
+                return null;
+            }
+        },
+        []
+    );
 
     return {
         createConversationDocument,
-        updateConversationDocument,
         addMessageToConversation,
-        getConversationHistory,
-        refetchList,
-        isCreating,
-        isUpdating,
+        getConversationContent,
+        documentsList,
         isListLoading,
+        refetchList,
     };
 };
