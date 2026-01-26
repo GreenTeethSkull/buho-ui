@@ -3,6 +3,7 @@ import { VaultClient } from '../runtime/integrations/vault.client';
 import { isRecord, readNonEmptyString, readOptionalNumber, readOptionalString } from './copilot-directline.shared';
 
 const DIRECTLINE_TOKEN_URL = 'https://directline.botframework.com/v3/directline/tokens/generate';
+const DIRECTLINE_REFRESH_URL = 'https://directline.botframework.com/v3/directline/tokens/refresh';
 const COPILOT_DIRECTLINE_SCHEMA_ID = 'app:my.dynatrace.sre.toolkit:sre-toolkit-copilot-directline';
 
 export interface CopilotDirectlineTokenInput {
@@ -10,6 +11,8 @@ export interface CopilotDirectlineTokenInput {
         user?: string;
         [key: string]: unknown;
     };
+    refresh?: boolean;
+    token?: string;
 }
 
 export interface CopilotDirectlineTokenOutput {
@@ -81,19 +84,64 @@ const resolveCredentialId = (config: CopilotSettingsValue) => {
 const parseInput = (payload: CopilotDirectlineTokenInput): CopilotDirectlineTokenInput => {
     const metadata = isRecord(payload.metadata) ? payload.metadata : undefined;
     const user = metadata ? readOptionalString(metadata.user) : undefined;
+    const refresh = payload.refresh === true;
+    const token = readOptionalString(payload.token);
 
     if (metadata && user !== undefined) {
-        return { metadata: { ...metadata, user } };
+        return { metadata: { ...metadata, user }, refresh, token };
     }
 
-    return metadata ? { metadata } : {};
+    return metadata ? { metadata, refresh, token } : { refresh, token };
 };
 
 export default async function (
     payload: CopilotDirectlineTokenInput
 ): Promise<CopilotDirectlineTokenOutput> {
-    const { metadata } = parseInput(payload);
+    const { metadata, refresh, token } = parseInput(payload);
     const metadataUser = readNonEmptyString(metadata?.user);
+
+    if (refresh) {
+        const refreshToken = readNonEmptyString(token);
+        if (!refreshToken) {
+            throw new Error('Token is required to refresh a Direct Line token.');
+        }
+
+        if (metadataUser) {
+            console.info(`Refreshing Direct Line token for user: ${metadataUser}`);
+        } else {
+            console.info('Refreshing Direct Line token.');
+        }
+
+        const response = await fetch(DIRECTLINE_REFRESH_URL, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${refreshToken}`,
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            const details = errorBody ? ` - ${errorBody}` : '';
+            throw new Error(
+                `Direct Line token refresh failed (HTTP ${response.status}): ${response.statusText}${details}`
+            );
+        }
+
+        const responseBody: unknown = await response.json();
+
+        if (!isDirectLineTokenResponse(responseBody)) {
+            throw new Error('Unexpected response from Direct Line token refresh endpoint.');
+        }
+
+        return {
+            token: responseBody.token,
+            conversationId: responseBody.conversationId,
+            expiresIn: responseBody.expires_in,
+            timestamp: new Date().toISOString(),
+        };
+    }
 
     if (metadataUser) {
         console.info(`Generating Direct Line token for user: ${metadataUser}`);

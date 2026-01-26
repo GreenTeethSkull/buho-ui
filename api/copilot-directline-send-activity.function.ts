@@ -1,4 +1,4 @@
-import { isRecord, readNonEmptyString } from './copilot-directline.shared';
+import { isRecord, readNonEmptyString, readOptionalString } from './copilot-directline.shared';
 
 const buildActivitiesUrl = (conversationId: string) =>
     `https://directline.botframework.com/v3/directline/conversations/${conversationId}/activities`;
@@ -8,6 +8,11 @@ export interface CopilotDirectlineSendActivityInput {
     conversationId: string;
     text: string;
     userId?: string;
+    history?: Array<{
+        role: 'user' | 'assistant' | 'system';
+        content: string;
+        timestamp: string;
+    }>;
 }
 
 export interface CopilotDirectlineSendActivityOutput {
@@ -35,6 +40,18 @@ export default async function (
     const conversationId = readNonEmptyString(payload.conversationId);
     const text = readNonEmptyString(payload.text);
     const userId = readNonEmptyString(payload.userId) ?? 'user';
+    const history = Array.isArray(payload.history) ? payload.history : undefined;
+    const cleanedHistory = history
+        ? history.filter((item) => {
+            if (!isRecord(item)) {
+                return false;
+            }
+            const role = readNonEmptyString(item.role);
+            const content = readNonEmptyString(item.content);
+            const timestamp = readOptionalString(item.timestamp);
+            return Boolean(role && content && timestamp);
+        })
+        : undefined;
 
     if (!token || !conversationId || !text) {
         throw new Error('Token, conversationId, and text are required to send an activity.');
@@ -51,6 +68,9 @@ export default async function (
             type: 'message',
             from: { id: userId },
             text,
+            ...(cleanedHistory && cleanedHistory.length > 0
+                ? { channelData: { history: cleanedHistory } }
+                : {}),
         }),
     });
 

@@ -49,6 +49,7 @@ export const useChatSession = () => {
     const documentIdRef = useRef<string | null>(null);
     const conversationIdRef = useRef<string | null>(null);
     const directLineConversationRef = useRef<DirectLineConversation | null>(null);
+    const shouldIncludeHistoryRef = useRef(false);
     const pendingBotResponseRef = useRef<{
         resolve: () => void;
         timeoutId: ReturnType<typeof setTimeout> | null;
@@ -137,7 +138,10 @@ export const useChatSession = () => {
                 });
 
                 if (documentIdRef.current && conversationContentRef.current) {
-                    conversationContentRef.current.messages.push(botMessage);
+                    conversationContentRef.current = {
+                        ...conversationContentRef.current,
+                        messages: [...conversationContentRef.current.messages, botMessage],
+                    };
                 }
             }
         }
@@ -193,6 +197,7 @@ export const useChatSession = () => {
                 documentNameRef.current = `Chat ${conversationId}`;
                 conversationContentRef.current = initialContent;
                 conversationIdRef.current = conversationId;
+                shouldIncludeHistoryRef.current = false;
 
                 console.log("[useChatSession] Step 3: Creating DirectLine conversation...");
                 const directLineConversation = await createConversation(tokenResponse.token);
@@ -250,6 +255,7 @@ export const useChatSession = () => {
                 documentNameRef.current = name;
                 conversationContentRef.current = conversationData;
                 conversationIdRef.current = conversationData.conversationId;
+                shouldIncludeHistoryRef.current = (conversationData.messages?.length ?? 0) > 0;
 
                 console.log("[useChatSession] Fetching new token for resumed session...");
                 const tokenResponse = await fetchToken();
@@ -257,29 +263,26 @@ export const useChatSession = () => {
                     console.error("[useChatSession] Failed to fetch token for resume");
                     return false;
                 }
-
                 console.log("[useChatSession] Creating new DirectLine conversation for resumed session...");
                 const directLineConversation = await createConversation(tokenResponse.token);
-
-                if (directLineConversation) {
-                    console.log("[useChatSession] Session resumed successfully");
-                    processedActivityIds.current.clear();
-                    directLineConversationRef.current = directLineConversation;
-                    
-                    setSessionState({
-                        isActive: true,
-                        documentId: docId,
-                        conversationId: conversationData.conversationId,
-                        messages: conversationData.messages || [],
-                        isConnecting: false,
-                        isSending: false,
-                    });
-                    return true;
-                } else {
+                if (!directLineConversation) {
                     console.error("[useChatSession] Failed to create DirectLine conversation for resume");
                     conversationIdRef.current = null;
                     return false;
                 }
+                processedActivityIds.current.clear();
+                directLineConversationRef.current = directLineConversation;
+
+                console.log("[useChatSession] Session resumed successfully");
+                setSessionState({
+                    isActive: true,
+                    documentId: docId,
+                    conversationId: conversationData.conversationId,
+                    messages: conversationData.messages || [],
+                    isConnecting: false,
+                    isSending: false,
+                });
+                return true;
             } catch (error) {
                 console.error("[useChatSession] Error resuming session:", error);
                 conversationIdRef.current = null;
@@ -318,18 +321,29 @@ export const useChatSession = () => {
                 messages: [...prev.messages, userMessage],
             }));
 
+            const historyPayload = shouldIncludeHistoryRef.current
+                ? [...(conversationContentRef.current?.messages ?? [])]
+                : undefined;
+
             if (documentIdRef.current && conversationContentRef.current) {
-                conversationContentRef.current.messages.push(userMessage);
+                conversationContentRef.current = {
+                    ...conversationContentRef.current,
+                    messages: [...conversationContentRef.current.messages, userMessage],
+                };
             }
 
             console.log("[useChatSession] Sending activity to DirectLine...");
-            const success = await sendActivity(text);
+            const success = await sendActivity(text, "user", historyPayload);
             console.log("[useChatSession] Send activity result:", success);
             if (!success) {
                 setSessionState((prev) => ({ ...prev, isSending: false }));
                 stopPolling();
                 clearPendingBotResponse();
                 return false;
+            }
+
+            if (shouldIncludeHistoryRef.current) {
+                shouldIncludeHistoryRef.current = false;
             }
 
             const activeConversation = directLineConversationRef.current ?? conversation;
@@ -370,7 +384,6 @@ export const useChatSession = () => {
             sessionState.conversationId,
             startPolling,
             stopPolling,
-            updateConversation,
         ]
     );
 
@@ -383,6 +396,7 @@ export const useChatSession = () => {
         conversationContentRef.current = null;
         conversationIdRef.current = null;
         directLineConversationRef.current = null;
+        shouldIncludeHistoryRef.current = false;
         setSessionState({
             isActive: false,
             documentId: null,
