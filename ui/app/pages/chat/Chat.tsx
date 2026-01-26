@@ -29,6 +29,7 @@ export const Chat: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState(MOCK_MODELS[0].id);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isStartingMessage, setIsStartingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { conversations: conversationsList, refetch: refetchConversations } = useConversationsList();
@@ -135,18 +136,34 @@ export const Chat: React.FC = () => {
   }, [conversations, activeConversationId, setSearchParams, deleteConversation, refetchConversations, endSession]);
 
   const handleSendMessage = useCallback(async (content: string) => {
-    if (!sessionState.isActive) {
-      const success = await startNewSession(selectedModel);
-      if (!success) {
-        console.error("Failed to start session");
-        return;
-      }
+    const shouldStartSession = !sessionState.isActive;
+
+    if (shouldStartSession) {
+      setIsStartingMessage(true);
     }
 
-    await sendMessage(content);
-  }, [sessionState.isActive, startNewSession, sendMessage]);
+    try {
+      if (shouldStartSession) {
+        const success = await startNewSession(selectedModel);
+        if (!success) {
+          console.error("Failed to start session");
+          return;
+        }
+        refetchConversations();
+      }
 
-  const isLoading = sessionState.isConnecting || (isLoadingDoc && activeConversationId && sessionState.messages.length === 0);
+      await sendMessage(content);
+    } finally {
+      if (shouldStartSession) {
+        setIsStartingMessage(false);
+      }
+    }
+  }, [refetchConversations, selectedModel, sendMessage, sessionState.isActive, startNewSession]);
+
+  const isLoading =
+    sessionState.isConnecting ||
+    ((isLoadingDoc && activeConversationId) || isStartingMessage) &&
+      sessionState.messages.length === 0;
 
   return (
     <Flex style={{ height: "100%", overflow: "hidden" }}>

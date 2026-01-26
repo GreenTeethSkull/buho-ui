@@ -45,6 +45,11 @@ interface CopilotDirectlineSendActivityInput {
     conversationId: string;
     text: string;
     userId?: string;
+    history?: Array<{
+        role: "user" | "assistant" | "system";
+        content: string;
+        timestamp: string;
+    }>;
 }
 
 interface CopilotDirectlineActivitiesInput {
@@ -166,8 +171,13 @@ export const useDirectLineConversation = () => {
         [conversation?.referenceGrammarId, createConversationRequest]
     );
 
+
     const sendActivity = useCallback(
-        async (text: string, userId: string = "user"): Promise<boolean> => {
+        async (
+            text: string,
+            userId: string = "user",
+            history?: CopilotDirectlineSendActivityInput["history"]
+        ): Promise<boolean> => {
             console.log("[useDirectLineConversation] Sending activity:", text);
             const activeConversation = conversationRef.current ?? conversation;
             if (!activeConversation) {
@@ -181,6 +191,7 @@ export const useDirectLineConversation = () => {
                     conversationId: activeConversation.conversationId,
                     text,
                     userId,
+                    history,
                 });
 
                 console.log("[useDirectLineConversation] Send activity success");
