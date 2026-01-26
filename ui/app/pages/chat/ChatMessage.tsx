@@ -1,4 +1,7 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { Components } from "react-markdown";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text, Paragraph } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
@@ -12,6 +15,44 @@ interface ChatMessageProps {
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === "user";
+  const markdownComponents: Components = {
+    p: ({ children }) => (
+      <Paragraph style={{ margin: 0, whiteSpace: "pre-wrap" }}>{children}</Paragraph>
+    ),
+    ul: ({ children }) => (
+      <ul style={{ margin: "4px 0", paddingLeft: 20 }}>{children}</ul>
+    ),
+    ol: ({ children }) => (
+      <ol style={{ margin: "4px 0", paddingLeft: 20 }}>{children}</ol>
+    ),
+    li: ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>,
+    table: ({ children }) => (
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>{children}</table>
+      </div>
+    ),
+    th: ({ children }) => (
+      <th
+        style={{
+          textAlign: "left",
+          padding: "6px 8px",
+          borderBottom: `1px solid ${Colors.Border.Neutral.Default}`,
+        }}
+      >
+        {children}
+      </th>
+    ),
+    td: ({ children }) => (
+      <td
+        style={{
+          padding: "6px 8px",
+          borderBottom: `1px solid ${Colors.Border.Neutral.Default}`,
+        }}
+      >
+        {children}
+      </td>
+    ),
+  };
 
   return (
     <Flex
@@ -44,9 +85,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         </Flex>
         <Flex flexDirection="column" gap={4} style={{ flex: 1 }}>
           <Text style={{ fontWeight: 600 }}>{isUser ? "You" : "Assistant"}</Text>
-          <Paragraph style={{ whiteSpace: "pre-wrap", margin: 0 }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {message.content}
-          </Paragraph>
+          </ReactMarkdown>
         </Flex>
       </Flex>
     </Flex>

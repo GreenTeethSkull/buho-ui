@@ -78,9 +78,9 @@ export const useConversationManager = () => {
   );
 
   const updateConversation = useCallback(
-    async (id: string, version: string, name: string, content: ConversationDocument): Promise<boolean> => {
+    async (id: string, version: string, name: string, content: ConversationDocument): Promise<string | null> => {
       try {
-        await updateDoc({
+        const result = await documentsClient.updateDocument({
           id,
           optimisticLockingVersion: version,
           body: {
@@ -88,7 +88,7 @@ export const useConversationManager = () => {
             content: PlatformBinary.fromJson(content),
           },
         });
-        return true;
+        return result.documentMetadata.version;
       } catch (error) {
         console.error("Error updating conversation", error);
         showToast({
@@ -96,10 +96,10 @@ export const useConversationManager = () => {
             message: "No se pudo guardar el mensaje.",
             type: "critical",
         });
-        return false;
+        return null;
       }
     },
-    [updateDoc]
+    []
   );
 
   return {
