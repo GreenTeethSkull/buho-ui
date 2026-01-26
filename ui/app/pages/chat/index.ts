@@ -4,4 +4,4 @@ export { ChatMessage } from "./ChatMessage";
 export { ChatInput } from "./ChatInput";
 export { ModelSelector } from "./ModelSelector";
 export { EmptyChat } from "./EmptyChat";
-export * from "./types";
+// export * from "./types";

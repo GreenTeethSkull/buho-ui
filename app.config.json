@@ -11,7 +11,11 @@
       { "name": "storage:buckets:read", "comment": "default template" },
       { "name": "document:documents:read", "comment": "default template" },
       { "name": "document:documents:write", "comment": "default template" },
-      { "name": "document:documents:delete", "comment": "Enable document deletion" }
+      { "name": "document:documents:delete", "comment": "Enable document deletion" },
+      { "name": "app-engine:apps:run", "comment": "Run app functions" }
     ]
+  },
+  "server": {
+    "enableCSP": false
   }
 }
