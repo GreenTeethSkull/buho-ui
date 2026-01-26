@@ -1,11 +1,11 @@
-import { useState, useCallback, useRef } from "react";
-import { functions } from "@dynatrace-sdk/app-utils";
+import { useCallback, useRef, useState } from "react";
+import { useAppFunctionExecutor } from "./useAppFunctionExecutor";
 
 export interface DirectLineConversation {
     conversationId: string;
     token: string;
-    expires_in: number;
-    streamUrl: string;
+    expiresIn?: number;
+    streamUrl?: string;
     referenceGrammarId?: string;
 }
 
@@ -24,17 +24,60 @@ export interface DirectLineActivity {
 
 export interface DirectLineMessage {
     activities: DirectLineActivity[];
-    watermark: string;
+    watermark?: string;
+    timestamp: string;
+}
+
+interface CopilotDirectlineConversationInput {
+    token: string;
+}
+
+interface CopilotDirectlineConversationOutput {
+    conversationId: string;
+    token?: string;
+    expiresIn?: number;
+    streamUrl?: string;
+    timestamp: string;
+}
+
+interface CopilotDirectlineSendActivityInput {
+    token: string;
+    conversationId: string;
+    text: string;
+    userId?: string;
+}
+
+interface CopilotDirectlineActivitiesInput {
+    token: string;
+    conversationId: string;
+    watermark?: string;
 }
 
 export const useDirectLineConversation = () => {
     const [conversation, setConversation] = useState<DirectLineConversation | null>(null);
+    const conversationRef = useRef<DirectLineConversation | null>(null);
     const [isConnected, setIsConnected] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+
+    const { executeAsync: createConversationRequest, isLoading } = useAppFunctionExecutor<
+        CopilotDirectlineConversationInput,
+        CopilotDirectlineConversationOutput
+    >("copilot-directline-conversation");
+
+    const { executeAsync: sendActivityRequest } = useAppFunctionExecutor<
+        CopilotDirectlineSendActivityInput,
+        { id: string; timestamp: string }
+    >("copilot-directline-send-activity");
+
+    const { executeAsync: getActivitiesRequest } = useAppFunctionExecutor<
+        CopilotDirectlineActivitiesInput,
+        DirectLineMessage
+    >("copilot-directline-activities");
     
     const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const watermarkRef = useRef<string | undefined>(undefined);
-    const onMessageCallbackRef = useRef<((data: DirectLineMessage) => void) | null>(null);
+    const onMessageCallbackRef = useRef<
+        ((data: DirectLineMessage) => void | Promise<void>) | null
+    >(null);
     const isPollingRef = useRef(false);
 
     const pollActivities = useCallback(async (conv: DirectLineConversation) => {
@@ -45,16 +88,11 @@ export const useDirectLineConversation = () => {
         isPollingRef.current = true;
         
         try {
-            const response = await functions.call("directline", {
-                data: {
-                    action: "getActivities",
-                    token: conv.token,
-                    conversationId: conv.conversationId,
-                    watermark: watermarkRef.current,
-                },
+            const data = await getActivitiesRequest({
+                token: conv.token,
+                conversationId: conv.conversationId,
+                watermark: watermarkRef.current,
             });
-
-            const data = (await response.json()) as DirectLineMessage;
             
             if (data.watermark) {
                 watermarkRef.current = data.watermark;
@@ -62,16 +100,17 @@ export const useDirectLineConversation = () => {
 
             if (data.activities && data.activities.length > 0 && onMessageCallbackRef.current) {
                 console.log("[useDirectLineConversation] Polling received activities:", data.activities.length);
-                onMessageCallbackRef.current(data);
+                await onMessageCallbackRef.current(data);
             }
         } catch (error) {
             console.error("[useDirectLineConversation] Polling error:", error);
         } finally {
             isPollingRef.current = false;
         }
-    }, []);
+    }, [getActivitiesRequest]);
 
-    const startPolling = useCallback((conv: DirectLineConversation, onMessage: (data: DirectLineMessage) => void) => {
+    const startPolling = useCallback(
+        (conv: DirectLineConversation, onMessage: (data: DirectLineMessage) => void | Promise<void>) => {
         console.log("[useDirectLineConversation] Starting polling for conversation:", conv.conversationId);
         
         onMessageCallbackRef.current = onMessage;
@@ -88,7 +127,9 @@ export const useDirectLineConversation = () => {
         }, 2000);
 
         void pollActivities(conv);
-    }, [pollActivities]);
+        },
+        [pollActivities]
+    );
 
     const stopPolling = useCallback(() => {
         console.log("[useDirectLineConversation] Stopping polling");
@@ -104,51 +145,42 @@ export const useDirectLineConversation = () => {
     const createConversation = useCallback(
         async (token: string): Promise<DirectLineConversation | null> => {
             console.log("[useDirectLineConversation] Creating conversation with token");
-            setIsLoading(true);
             try {
-                const response = await functions.call("directline", {
-                    data: {
-                        action: "createConversation",
-                        token,
-                    },
-                });
-
-                console.log("[useDirectLineConversation] Create conversation response:", response);
-                const data = (await response.json()) as DirectLineConversation;
+                const data = await createConversationRequest({ token });
                 const conversationData: DirectLineConversation = {
-                    ...data,
-                    token,
+                    conversationId: data.conversationId,
+                    token: data.token ?? token,
+                    expiresIn: data.expiresIn,
+                    streamUrl: data.streamUrl,
+                    referenceGrammarId: conversation?.referenceGrammarId,
                 };
                 console.log("[useDirectLineConversation] Conversation created:", conversationData.conversationId);
+                conversationRef.current = conversationData;
                 setConversation(conversationData);
                 return conversationData;
             } catch (error) {
                 console.error("[useDirectLineConversation] Failed to create conversation:", error);
                 return null;
-            } finally {
-                setIsLoading(false);
             }
         },
-        []
+        [conversation?.referenceGrammarId, createConversationRequest]
     );
 
     const sendActivity = useCallback(
         async (text: string, userId: string = "user"): Promise<boolean> => {
             console.log("[useDirectLineConversation] Sending activity:", text);
-            if (!conversation) {
+            const activeConversation = conversationRef.current ?? conversation;
+            if (!activeConversation) {
                 console.error("[useDirectLineConversation] No active conversation");
                 return false;
             }
 
             try {
-                await functions.call("directline", {
-                    data: {
-                        action: "sendActivity",
-                        token: conversation.token,
-                        conversationId: conversation.conversationId,
-                        text,
-                        userId,
-                    },
+                await sendActivityRequest({
+                    token: activeConversation.token,
+                    conversationId: activeConversation.conversationId,
+                    text,
+                    userId,
                 });
 
                 console.log("[useDirectLineConversation] Send activity success");
@@ -158,7 +190,7 @@ export const useDirectLineConversation = () => {
                 return false;
             }
         },
-        [conversation]
+        [conversation, sendActivityRequest]
     );
 
     return {

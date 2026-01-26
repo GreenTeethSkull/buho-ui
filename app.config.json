@@ -12,7 +12,10 @@
       { "name": "document:documents:read", "comment": "default template" },
       { "name": "document:documents:write", "comment": "default template" },
       { "name": "document:documents:delete", "comment": "Enable document deletion" },
-      { "name": "app-engine:apps:run", "comment": "Run app functions" }
+      { "name": "app-engine:apps:run", "comment": "Run app functions" },
+      { "name": "app-settings:objects:read", "comment": "Read app settings objects" },
+      { "name": "settings:objects:read", "comment": "Read environment settings objects" },
+      { "name": "environment-api:credentials:read", "comment": "Read Credential Vault entries" }
     ]
   },
   "server": {

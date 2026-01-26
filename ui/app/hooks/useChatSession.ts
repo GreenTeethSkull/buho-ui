@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useDirectLineToken } from "./useDirectLineToken";
 import {
     useDirectLineConversation,
     DirectLineMessage,
+    DirectLineConversation,
 } from "./useDirectLineConversation";
 import { useConversationManager } from "./useConversationManager";
 import type { ConversationDocument, ConversationMessage } from "../domain/conversation";
@@ -47,14 +48,57 @@ export const useChatSession = () => {
     const documentNameRef = useRef<string>("");
     const documentIdRef = useRef<string | null>(null);
     const conversationIdRef = useRef<string | null>(null);
+    const directLineConversationRef = useRef<DirectLineConversation | null>(null);
+    const pendingBotResponseRef = useRef<{
+        resolve: () => void;
+        timeoutId: ReturnType<typeof setTimeout> | null;
+    } | null>(null);
 
-    const handleBotMessage = useCallback((data: DirectLineMessage) => {
+    const RESPONSE_TIMEOUT_MS = 30000;
+
+    const clearPendingBotResponse = useCallback(() => {
+        if (pendingBotResponseRef.current?.timeoutId) {
+            clearTimeout(pendingBotResponseRef.current.timeoutId);
+        }
+        pendingBotResponseRef.current = null;
+    }, []);
+
+    const resolvePendingBotResponse = useCallback(() => {
+        if (!pendingBotResponseRef.current) {
+            return;
+        }
+
+        pendingBotResponseRef.current.resolve();
+        clearPendingBotResponse();
+        stopPolling();
+        setSessionState((prev) => ({ ...prev, isSending: false }));
+    }, [clearPendingBotResponse, stopPolling]);
+
+    const persistConversation = useCallback(async () => {
+        if (!documentIdRef.current || !conversationContentRef.current) {
+            return;
+        }
+
+        const updatedVersion = await updateConversation(
+            documentIdRef.current,
+            documentVersionRef.current,
+            documentNameRef.current,
+            conversationContentRef.current
+        );
+
+        if (updatedVersion) {
+            documentVersionRef.current = updatedVersion;
+        }
+    }, [updateConversation]);
+
+    const handleBotMessage = useCallback(async (data: DirectLineMessage) => {
         console.log("[useChatSession] handleBotMessage called with:", data);
         if (!data.activities || data.activities.length === 0) {
             console.log("[useChatSession] No activities in message");
             return;
         }
 
+        let receivedBotMessage = false;
         for (const activity of data.activities) {
             console.log("[useChatSession] Processing activity:", activity);
             
@@ -77,6 +121,7 @@ export const useChatSession = () => {
                 activity.text
             ) {
                 console.log("[useChatSession] Bot message received:", activity.text);
+                receivedBotMessage = true;
                 const botMessage: ConversationMessage = {
                     role: "assistant",
                     content: activity.text,
@@ -93,29 +138,14 @@ export const useChatSession = () => {
 
                 if (documentIdRef.current && conversationContentRef.current) {
                     conversationContentRef.current.messages.push(botMessage);
-                    void updateConversation(
-                        documentIdRef.current,
-                        documentVersionRef.current,
-                        documentNameRef.current,
-                        conversationContentRef.current
-                    );
                 }
             }
         }
-    }, [updateConversation]);
-
-    useEffect(() => {
-        if (conversation) {
-            console.log("[useChatSession] Conversation available, starting polling");
-            startPolling(conversation, handleBotMessage);
+        if (receivedBotMessage) {
+            await persistConversation();
+            resolvePendingBotResponse();
         }
-        
-        return () => {
-            if (conversation) {
-                stopPolling();
-            }
-        };
-    }, [conversation, startPolling, stopPolling, handleBotMessage]);
+    }, [persistConversation, resolvePendingBotResponse]);
 
     const startNewSession = useCallback(
         async (modelId: string): Promise<boolean> => {
@@ -170,6 +200,7 @@ export const useChatSession = () => {
                 if (directLineConversation) {
                     console.log("[useChatSession] DirectLine conversation created:", directLineConversation.conversationId);
                     processedActivityIds.current.clear();
+                    directLineConversationRef.current = directLineConversation;
                     
                     setSessionState({
                         isActive: true,
@@ -233,6 +264,7 @@ export const useChatSession = () => {
                 if (directLineConversation) {
                     console.log("[useChatSession] Session resumed successfully");
                     processedActivityIds.current.clear();
+                    directLineConversationRef.current = directLineConversation;
                     
                     setSessionState({
                         isActive: true,
@@ -288,31 +320,69 @@ export const useChatSession = () => {
 
             if (documentIdRef.current && conversationContentRef.current) {
                 conversationContentRef.current.messages.push(userMessage);
-                void updateConversation(
-                    documentIdRef.current,
-                    documentVersionRef.current,
-                    documentNameRef.current,
-                    conversationContentRef.current
-                );
             }
 
             console.log("[useChatSession] Sending activity to DirectLine...");
             const success = await sendActivity(text);
             console.log("[useChatSession] Send activity result:", success);
+            if (!success) {
+                setSessionState((prev) => ({ ...prev, isSending: false }));
+                stopPolling();
+                clearPendingBotResponse();
+                return false;
+            }
 
-            setSessionState((prev) => ({ ...prev, isSending: false }));
-            return success;
+            const activeConversation = directLineConversationRef.current ?? conversation;
+            if (!activeConversation) {
+                console.error("[useChatSession] No active conversation for polling");
+                setSessionState((prev) => ({ ...prev, isSending: false }));
+                return false;
+            }
+
+            startPolling(activeConversation, handleBotMessage);
+
+            try {
+                await new Promise<void>((resolve) => {
+                    clearPendingBotResponse();
+                    const timeoutId = setTimeout(() => {
+                        console.warn("[useChatSession] Timed out waiting for bot response");
+                        clearPendingBotResponse();
+                        stopPolling();
+                        setSessionState((prev) => ({ ...prev, isSending: false }));
+                        resolve();
+                    }, RESPONSE_TIMEOUT_MS);
+
+                    pendingBotResponseRef.current = { resolve, timeoutId };
+                });
+            } finally {
+                clearPendingBotResponse();
+            }
+
+            return true;
         },
-        [isConnected, sessionState.conversationId, sendActivity, updateConversation]
+        [
+            clearPendingBotResponse,
+            conversation,
+            handleBotMessage,
+            isConnected,
+            RESPONSE_TIMEOUT_MS,
+            sendActivity,
+            sessionState.conversationId,
+            startPolling,
+            stopPolling,
+            updateConversation,
+        ]
     );
 
     const endSession = useCallback(() => {
         console.log("[useChatSession] Ending session");
         stopPolling();
         processedActivityIds.current.clear();
+        clearPendingBotResponse();
         documentIdRef.current = null;
         conversationContentRef.current = null;
         conversationIdRef.current = null;
+        directLineConversationRef.current = null;
         setSessionState({
             isActive: false,
             documentId: null,
