@@ -26,6 +26,7 @@ export interface DirectLineMessage {
     activities: DirectLineActivity[];
     watermark?: string;
     timestamp: string;
+    timedOut?: boolean;
 }
 
 interface CopilotDirectlineConversationInput {
@@ -56,12 +57,15 @@ interface CopilotDirectlineActivitiesInput {
     token: string;
     conversationId: string;
     watermark?: string;
+    timeoutSeconds?: number;
+    waitForBot?: boolean;
 }
 
 export const useDirectLineConversation = () => {
     const [conversation, setConversation] = useState<DirectLineConversation | null>(null);
     const conversationRef = useRef<DirectLineConversation | null>(null);
     const [isConnected, setIsConnected] = useState(false);
+    const LONG_POLL_TIMEOUT_SECONDS = 55;
 
     const { executeAsync: createConversationRequest, isLoading } = useAppFunctionExecutor<
         CopilotDirectlineConversationInput,
@@ -78,16 +82,16 @@ export const useDirectLineConversation = () => {
         DirectLineMessage
     >("copilot-directline-activities");
     
-    const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const watermarkRef = useRef<string | undefined>(undefined);
     const onMessageCallbackRef = useRef<
         ((data: DirectLineMessage) => void | Promise<void>) | null
     >(null);
     const isPollingRef = useRef(false);
+    const isPollingActiveRef = useRef(false);
 
-    const pollActivities = useCallback(async (conv: DirectLineConversation) => {
+    const pollActivities = useCallback(async (conv: DirectLineConversation): Promise<boolean> => {
         if (isPollingRef.current) {
-            return;
+            return true;
         }
         
         isPollingRef.current = true;
@@ -97,6 +101,8 @@ export const useDirectLineConversation = () => {
                 token: conv.token,
                 conversationId: conv.conversationId,
                 watermark: watermarkRef.current,
+                timeoutSeconds: LONG_POLL_TIMEOUT_SECONDS,
+                waitForBot: true,
             });
             
             if (data.watermark) {
@@ -107,44 +113,60 @@ export const useDirectLineConversation = () => {
                 console.log("[useDirectLineConversation] Polling received activities:", data.activities.length);
                 await onMessageCallbackRef.current(data);
             }
+
+            return true;
         } catch (error) {
             console.error("[useDirectLineConversation] Polling error:", error);
+            return false;
         } finally {
             isPollingRef.current = false;
         }
-    }, [getActivitiesRequest]);
+    }, [getActivitiesRequest, LONG_POLL_TIMEOUT_SECONDS]);
+
+    const pollLoop = useCallback(
+        async (conv: DirectLineConversation) => {
+            if (!isPollingActiveRef.current) {
+                return;
+            }
+
+            const success = await pollActivities(conv);
+
+            if (!isPollingActiveRef.current) {
+                return;
+            }
+
+            if (!success) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                if (!isPollingActiveRef.current) {
+                    return;
+                }
+            }
+
+            void pollLoop(conv);
+        },
+        [pollActivities]
+    );
 
     const startPolling = useCallback(
         (conv: DirectLineConversation, onMessage: (data: DirectLineMessage) => void | Promise<void>) => {
         console.log("[useDirectLineConversation] Starting polling for conversation:", conv.conversationId);
         
         onMessageCallbackRef.current = onMessage;
-        watermarkRef.current = undefined;
-        
-        if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-        }
+
+        isPollingActiveRef.current = true;
 
         setIsConnected(true);
-        
-        pollingIntervalRef.current = setInterval(() => {
-            void pollActivities(conv);
-        }, 2000);
 
-        void pollActivities(conv);
+        void pollLoop(conv);
         },
-        [pollActivities]
+        [pollLoop]
     );
 
     const stopPolling = useCallback(() => {
         console.log("[useDirectLineConversation] Stopping polling");
-        if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-        }
+        isPollingActiveRef.current = false;
         setIsConnected(false);
         onMessageCallbackRef.current = null;
-        watermarkRef.current = undefined;
     }, []);
 
     const createConversation = useCallback(
@@ -160,6 +182,7 @@ export const useDirectLineConversation = () => {
                     referenceGrammarId: conversation?.referenceGrammarId,
                 };
                 console.log("[useDirectLineConversation] Conversation created:", conversationData.conversationId);
+                watermarkRef.current = undefined;
                 conversationRef.current = conversationData;
                 setConversation(conversationData);
                 return conversationData;
