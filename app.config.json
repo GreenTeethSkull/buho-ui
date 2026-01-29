@@ -3,8 +3,8 @@
   "environmentUrl": "https://hmc05194.apps.dynatrace.com/",
   "app": {
     "name": "SRE Agents",
-    "version": "0.0.1",
-    "description": "A starting project with routing, fetching data, and charting",
+    "version": "0.0.4",
+    "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
     "scopes": [
       { "name": "storage:logs:read", "comment": "default template" },
@@ -17,8 +17,5 @@
       { "name": "settings:objects:read", "comment": "Read environment settings objects" },
       { "name": "environment-api:credentials:read", "comment": "Read Credential Vault entries" }
     ]
-  },
-  "server": {
-    "enableCSP": false
   }
 }

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text, Heading } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
-import { DavisAIIcon } from "@dynatrace/strato-icons";
+import { DavisAIIcon, AiIcon } from "@dynatrace/strato-icons";
 
 interface EmptyChatProps {
   onSuggestionClick?: (message: string) => void;
@@ -35,7 +35,7 @@ export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
           background: Colors.Background.Container.Neutral.Emphasized,
         }}
       >
-        <DavisAIIcon style={{ width: "40px", height: "40px" }} />
+        <AiIcon style={{ width: "40px", height: "40px" }} />
       </Flex>
       <Heading level={2}>¿Con que incidente puedo ayudarte hoy?</Heading>
       <Text style={{ color: Colors.Text.Neutral.Subdued, textAlign: "center", maxWidth: "500px" }}>

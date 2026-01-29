@@ -6,7 +6,7 @@ import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text, Paragraph } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import Borders from "@dynatrace/strato-design-tokens/borders";
-import { UserSessionsIcon, DavisAIIcon } from "@dynatrace/strato-icons";
+import { UserSessionsIcon, DavisAIIcon, AccountIcon, AgentIcon } from "@dynatrace/strato-icons";
 import type { ConversationMessage } from "../../domain/conversation";
 
 interface ChatMessageProps {
@@ -78,9 +78,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           }}
         >
           {isUser ? (
-            <UserSessionsIcon style={{ color: Colors.Text.Primary.Default }} />
+            <AccountIcon style={{ color: Colors.Text.Primary.Default }} />
           ) : (
-            <DavisAIIcon style={{ color: Colors.Text.Neutral.Default }} />
+            <AgentIcon style={{ color: Colors.Text.Neutral.Default }} />
           )}
         </Flex>
         <Flex flexDirection="column" gap={4} style={{ flex: 1 }}>
