@@ -11,9 +11,10 @@ import type { ConversationMessage } from "../../domain/conversation";
 
 interface ChatMessageProps {
   message: ConversationMessage;
+  modelName?: string;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ message, modelName }) => {
   const isUser = message.role === "user";
   const markdownComponents: Components = {
     p: ({ children }) => (
@@ -84,7 +85,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           )}
         </Flex>
         <Flex flexDirection="column" gap={4} style={{ flex: 1 }}>
-          <Text style={{ fontWeight: 600 }}>{isUser ? "You" : "Assistant"}</Text>
+          <Text style={{ fontWeight: 600 }}>{isUser ? "You" : modelName || "Assistant"}</Text>
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {message.content}
           </ReactMarkdown>

@@ -163,7 +163,7 @@ export const Chat: React.FC = () => {
   const isLoading =
     sessionState.isConnecting ||
     ((isLoadingDoc && activeConversationId) || isStartingMessage) &&
-      sessionState.messages.length === 0;
+    sessionState.messages.length === 0;
 
   return (
     <Flex style={{ height: "100%", overflow: "hidden" }}>
@@ -227,7 +227,11 @@ export const Chat: React.FC = () => {
           ) : (
             <Flex flexDirection="column" gap={8} padding={16} style={{ maxWidth: "900px", margin: "0 auto", width: "100%" }}>
               {sessionState.messages.map((message, index) => (
-                <ChatMessage key={`${index}-${message.timestamp}`} message={message} />
+                <ChatMessage
+                  key={`${index}-${message.timestamp}`}
+                  message={message}
+                  modelName={MOCK_MODELS.find(m => m.id === selectedModel)?.name}
+                />
               ))}
               <div ref={messagesEndRef} />
             </Flex>
