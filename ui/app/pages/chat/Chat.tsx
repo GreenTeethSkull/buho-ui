@@ -1,9 +1,10 @@
 import { Button } from "@dynatrace/strato-components/buttons";
 import { ProgressCircle } from "@dynatrace/strato-components/content";
+import { AiLoadingIndicator } from "@dynatrace/strato-components-preview/content";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text } from "@dynatrace/strato-components/typography";
 import Colors from "@dynatrace/strato-design-tokens/colors";
-import { CloseSidebarIcon, OpenSidebarIcon } from "@dynatrace/strato-icons";
+import { CloseSidebarIcon, OpenSidebarIcon, AIModelIcon } from "@dynatrace/strato-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { ConversationDocument, ConversationMessage, Model } from "../../domain/conversation";
@@ -165,6 +166,11 @@ export const Chat: React.FC = () => {
     ((isLoadingDoc && activeConversationId) || isStartingMessage) &&
     sessionState.messages.length === 0;
 
+  // Verificar si el último mensaje es del usuario (para mostrar indicador de carga)
+  const lastMessageIsFromUser = sessionState.messages.length > 0 && 
+    sessionState.messages[sessionState.messages.length - 1].role === "user";
+  const showLoadingIndicator = sessionState.isSending || (lastMessageIsFromUser && sessionState.isSending);
+
   return (
     <Flex style={{ height: "100%", overflow: "hidden" }}>
       {sidebarOpen && (
@@ -233,6 +239,14 @@ export const Chat: React.FC = () => {
                   modelName={MOCK_MODELS.find(m => m.id === selectedModel)?.name}
                 />
               ))}
+              {showLoadingIndicator && (
+                <AiLoadingIndicator>
+                  <AiLoadingIndicator.Icon>
+                    <AIModelIcon />
+                  </AiLoadingIndicator.Icon>
+                  Generating answer...
+                </AiLoadingIndicator>
+              )}
               <div ref={messagesEndRef} />
             </Flex>
           )}
