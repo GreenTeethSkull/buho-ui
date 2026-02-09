@@ -3,7 +3,7 @@
   "environmentUrl": "https://hmc05194.apps.dynatrace.com/",
   "app": {
     "name": "SRE Agents",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
     "scopes": [
