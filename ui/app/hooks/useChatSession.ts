@@ -55,7 +55,7 @@ export const useChatSession = () => {
         timeoutId: ReturnType<typeof setTimeout> | null;
     } | null>(null);
 
-    const RESPONSE_TIMEOUT_MS = 30000;
+    const RESPONSE_TIMEOUT_MS = 60000;
 
     const clearPendingBotResponse = useCallback(() => {
         if (pendingBotResponseRef.current?.timeoutId) {
