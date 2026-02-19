@@ -2,10 +2,11 @@
   "$schema": "./.dt-app/app.config.schema.json",
   "environmentUrl": "https://hmc05194.apps.dynatrace.com/",
   "app": {
-    "name": "SRE Agents",
-    "version": "0.0.6",
+    "name": "Lucy",
+    "version": "0.0.7",
     "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
+    "icon": "ui/assets/lucy-logo.png",
     "scopes": [
       { "name": "storage:logs:read", "comment": "default template" },
       { "name": "storage:buckets:read", "comment": "default template" },
