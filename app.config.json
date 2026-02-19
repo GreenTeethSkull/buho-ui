@@ -6,7 +6,7 @@
     "version": "0.0.7",
     "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
-    "icon": "ui/assets/lucy-logo.png",
+    "icon": "ui/assets/lucy-logo-2.png",
     "scopes": [
       { "name": "storage:logs:read", "comment": "default template" },
       { "name": "storage:buckets:read", "comment": "default template" },
