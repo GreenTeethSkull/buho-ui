@@ -3,10 +3,10 @@
   "environmentUrl": "https://hmc05194.apps.dynatrace.com/",
   "app": {
     "name": "Lucy",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
-    "icon": "ui/assets/lucy-logo-2.png",
+    "icon": "ui/assets/LUCY-ICON.png",
     "scopes": [
       { "name": "storage:logs:read", "comment": "default template" },
       { "name": "storage:buckets:read", "comment": "default template" },
