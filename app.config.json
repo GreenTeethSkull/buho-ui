@@ -3,12 +3,13 @@
   "environmentUrl": "https://hmc05194.apps.dynatrace.com/",
   "app": {
     "name": "Lucy",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
     "icon": "ui/assets/LUCY-ICON.png",
     "scopes": [
       { "name": "storage:logs:read", "comment": "default template" },
+      { "name": "storage:logs:write", "comment": "Ingest logs via Generic Log Ingest" },
       { "name": "storage:buckets:read", "comment": "default template" },
       { "name": "document:documents:read", "comment": "default template" },
       { "name": "document:documents:write", "comment": "default template" },

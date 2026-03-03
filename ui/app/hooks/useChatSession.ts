@@ -7,6 +7,7 @@ import {
 } from "./useDirectLineConversation";
 import { useConversationManager } from "./useConversationManager";
 import type { ConversationDocument, ConversationMessage } from "../domain/conversation";
+import { sendChatLog } from "../services/logService";
 
 export interface ChatSessionState {
     isActive: boolean;
@@ -143,6 +144,14 @@ export const useChatSession = () => {
                         messages: [...conversationContentRef.current.messages, botMessage],
                     };
                 }
+
+                sendChatLog({
+                    conversationId: conversationIdRef.current ?? "",
+                    model: conversationContentRef.current?.modelId ?? "",
+                    role: "assistant",
+                    text: activity.text,
+                    timestamp: botMessage.timestamp,
+                });
             }
         }
         if (receivedBotMessage) {
@@ -320,6 +329,14 @@ export const useChatSession = () => {
                 ...prev,
                 messages: [...prev.messages, userMessage],
             }));
+
+            sendChatLog({
+                conversationId: currentConversationId,
+                model: conversationContentRef.current?.modelId ?? "",
+                role: "user",
+                text,
+                timestamp: userMessage.timestamp,
+            });
 
             const historyPayload = shouldIncludeHistoryRef.current
                 ? [...(conversationContentRef.current?.messages ?? [])]
