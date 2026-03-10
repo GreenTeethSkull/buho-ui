@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
-import { Button } from "@dynatrace/strato-components/buttons";
 import { ArrowRightIcon } from "@dynatrace/strato-icons";
 import { useChatTheme } from "../../hooks/useChatTheme";
 
@@ -18,10 +17,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleSend = () => { if (message.trim() && !disabled) { onSendMessage(message.trim()); setMessage(""); } };
-  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+  const handleSend = () => {
+    if (message.trim() && !disabled) {
+      onSendMessage(message.trim());
+      setMessage("");
+    }
+  };
 
-  const canSend = message.trim() && !disabled;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const canSend = !!message.trim() && !disabled;
 
   return (
     <Flex flexDirection="column" padding={12} style={{ background: theme.inputAreaBg, borderTop: `1px solid ${theme.inputAreaBorder}` }}>
@@ -49,15 +59,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             boxShadow: isFocused ? `0 0 0 3px ${theme.accentBg}` : "none",
           }}
         />
-        <Button
-          variant="emphasized"
+        <button
           onClick={handleSend}
           disabled={!canSend}
           aria-label="Enviar"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           style={{
-            background: canSend ? (isHovered ? theme.accentLight : theme.accent) : theme.surfaceHover,
+            background: canSend
+              ? isHovered ? theme.buttonPrimaryHover : theme.buttonPrimaryBg
+              : theme.surfaceHover,
             border: "none",
             borderRadius: "50%",
             width: "40px",
@@ -69,11 +80,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             justifyContent: "center",
             transition: "all 0.2s ease",
             cursor: canSend ? "pointer" : "not-allowed",
-            opacity: canSend ? 1 : 0.6,
+            opacity: canSend ? 1 : 0.5,
+            color: canSend ? theme.buttonPrimaryText : theme.textTertiary,
+            fontFamily: "inherit",
           }}
         >
           <ArrowRightIcon style={{ width: "18px", height: "18px" }} />
-        </Button>
+        </button>
       </Flex>
     </Flex>
   );

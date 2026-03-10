@@ -30,6 +30,9 @@ export interface ChatThemeColors {
   surface: string;
   surfaceHover: string;
   border: string;
+  buttonPrimaryBg: string;
+  buttonPrimaryHover: string;
+  buttonPrimaryText: string;
 }
 
 const dark: ChatThemeColors = {
@@ -59,6 +62,9 @@ const dark: ChatThemeColors = {
   surface: Colors.Background.Container.Neutral.Emphasized,
   surfaceHover: Colors.Background.Container.Neutral.Default,
   border: Colors.Border.Neutral.Default,
+  buttonPrimaryBg: Colors.Theme.Primary['60'],
+  buttonPrimaryHover: Colors.Theme.Primary['80'],
+  buttonPrimaryText: "#ffffff",
 };
 
 const light: ChatThemeColors = {
@@ -88,6 +94,9 @@ const light: ChatThemeColors = {
   surface: Colors.Background.Surface.Default,
   surfaceHover: Colors.Background.Container.Neutral.Default,
   border: Colors.Border.Neutral.Default,
+  buttonPrimaryBg: Colors.Theme.Primary['60'],
+  buttonPrimaryHover: Colors.Theme.Primary['40'],
+  buttonPrimaryText: "#ffffff",
 };
 
 export const useChatTheme = (): ChatThemeColors => {
