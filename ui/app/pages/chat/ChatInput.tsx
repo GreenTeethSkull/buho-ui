@@ -1,84 +1,78 @@
 import React, { useState } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Button } from "@dynatrace/strato-components/buttons";
-import { TextArea } from "@dynatrace/strato-components-preview/forms";
-import Colors from "@dynatrace/strato-design-tokens/colors";
-import Borders from "@dynatrace/strato-design-tokens/borders";
-import BoxShadows from "@dynatrace/strato-design-tokens/box-shadows";
 import { ArrowRightIcon } from "@dynatrace/strato-icons";
+import { useChatTheme } from "../../hooks/useChatTheme";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
-  placeholder?: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled = false,
-  placeholder = "Escribe un mensaje..."
 }) => {
+  const theme = useChatTheme();
   const [message, setMessage] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  const handleSend = () => {
-    if (message.trim() && !disabled) {
-      onSendMessage(message.trim());
-      setMessage("");
-    }
-  };
+  const handleSend = () => { if (message.trim() && !disabled) { onSendMessage(message.trim()); setMessage(""); } };
+  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const canSend = message.trim() && !disabled;
 
   return (
-    <Flex
-      flexDirection="column"
-      padding={16}
-      style={{
-        background: Colors.Background.Surface.Default,
-        borderTop: `1px solid ${Colors.Border.Neutral.Default}`,
-      }}
-    >
-      <Flex
-        alignItems="flex-end"
-        gap={8}
-        style={{
-          background: Colors.Background.Field.Neutral.Default,
-          borderRadius: Borders.Radius.Container.Default,
-          boxShadow: BoxShadows.Surface.Raised.Rest,
-          padding: "8px 12px",
-        }}
-      >
-        {/* <Button variant="default" disabled={disabled}>
-          <UploadIcon />
-        </Button> */}
-        <Flex style={{ flex: 1 }}>
-          <TextArea
-            value={message}
-            onChange={setMessage}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={disabled}
-            style={{
-              resize: "none",
-              minHeight: "24px",
-              maxHeight: "200px",
-              border: "none",
-              background: "transparent",
-              width: "100%",
-            }}
-          />
-        </Flex>
+    <Flex flexDirection="column" padding={12} style={{ background: theme.inputAreaBg, borderTop: `1px solid ${theme.inputAreaBorder}` }}>
+      <Flex alignItems="center" gap={8}>
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Escribe un mensaje..."
+          disabled={disabled}
+          style={{
+            flex: 1,
+            background: theme.inputBg,
+            border: `1px solid ${isFocused ? theme.inputFocusBorder : theme.inputBorder}`,
+            borderRadius: "24px",
+            padding: "12px 18px",
+            color: theme.textPrimary,
+            fontSize: "14px",
+            outline: "none",
+            fontFamily: "inherit",
+            transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+            boxShadow: isFocused ? `0 0 0 3px ${theme.accentBg}` : "none",
+          }}
+        />
         <Button
           variant="emphasized"
           onClick={handleSend}
-          disabled={disabled || !message.trim()}
+          disabled={!canSend}
+          aria-label="Enviar"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{
+            background: canSend ? (isHovered ? theme.accentLight : theme.accent) : theme.surfaceHover,
+            border: "none",
+            borderRadius: "50%",
+            width: "40px",
+            height: "40px",
+            minWidth: "40px",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+            cursor: canSend ? "pointer" : "not-allowed",
+            opacity: canSend ? 1 : 0.6,
+          }}
         >
-          <ArrowRightIcon />
+          <ArrowRightIcon style={{ width: "18px", height: "18px" }} />
         </Button>
       </Flex>
     </Flex>
