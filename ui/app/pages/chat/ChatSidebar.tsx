@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Button } from "@dynatrace/strato-components/buttons";
 import { TextInput } from "@dynatrace/strato-components-preview/forms";
 import { Text, Heading } from "@dynatrace/strato-components/typography";
-import { PlusIcon, ChatIcon, DeleteIcon, CloseSidebarIcon, SettingIcon, HelpIcon } from "@dynatrace/strato-icons";
+import { PlusIcon, ChatIcon, DeleteIcon, CloseSidebarIcon } from "@dynatrace/strato-icons";
 import { useChatTheme } from "../../hooks/useChatTheme";
 
 export interface SidebarConversation {
@@ -37,6 +37,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onToggleSidebar,
 }) => {
   const theme = useChatTheme();
+  const [isNewChatHovered, setIsNewChatHovered] = useState(false);
   const filteredConversations = conversations.filter((conv) => conv.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
@@ -49,29 +50,30 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }}>
       <Flex padding={16} flexDirection="column" gap={12}>
         <Flex alignItems="center" justifyContent="space-between">
-          <Heading level={5} style={{ color: theme.textPrimary, fontWeight: 600, margin: 0, fontSize: "16px" }}>History</Heading>
+          <Heading level={5} style={{ color: theme.textPrimary, fontWeight: 600, margin: 0, fontSize: "16px" }}>Historial</Heading>
           {onToggleSidebar && (
-            <Button variant="default" onClick={onToggleSidebar} style={{ background: "transparent", border: "none", padding: "4px", minHeight: "auto" }}>
+            <Button variant="default" onClick={onToggleSidebar} onMouseEnter={(e) => e.currentTarget.style.background = theme.surfaceHover} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} style={{ background: "transparent", border: "none", padding: "4px", minHeight: "auto" }}>
               <CloseSidebarIcon style={{ width: "16px", height: "16px", color: theme.textTertiary }} />
             </Button>
           )}
         </Flex>
         
-        <Button onClick={onNewChat} variant="emphasized" style={{ 
+        <Button onClick={onNewChat} variant="emphasized" onMouseEnter={() => setIsNewChatHovered(true)} onMouseLeave={() => setIsNewChatHovered(false)} style={{ 
           width: "100%", 
-          background: theme.accent, 
+          background: isNewChatHovered ? theme.accentLight : theme.accent, 
           border: "none",
           borderRadius: "8px",
           padding: "10px 16px",
           fontSize: "14px",
           fontWeight: 500,
+          transition: "background 0.2s ease",
         }}>
           <Button.Prefix><PlusIcon style={{ width: "16px", height: "16px" }} /></Button.Prefix>
-          New Chat
+          Nuevo Chat
         </Button>
         
         <TextInput 
-          placeholder="Search conversations..." 
+          placeholder="Buscar conversaciones..." 
           value={searchQuery} 
           onChange={onSearchChange} 
           style={{ 
@@ -92,12 +94,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           textTransform: "uppercase",
           letterSpacing: "0.5px",
         }}>
-          Recent
+          Recientes
         </Text>
         
         {filteredConversations.length === 0 ? (
           <Flex justifyContent="center" alignItems="center" padding={24}>
-            <Text style={{ color: theme.textTertiary, fontSize: "13px" }}>No conversations yet</Text>
+            <Text style={{ color: theme.textTertiary, fontSize: "13px" }}>Sin conversaciones</Text>
           </Flex>
         ) : (
           filteredConversations.map((conversation) => (
@@ -126,16 +128,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         )}
       </Flex>
 
-      <Flex flexDirection="column" padding={12} gap={4} style={{ borderTop: `1px solid ${theme.sidebarBorder}` }}>
-        <Flex alignItems="center" gap={8} padding={8} style={{ borderRadius: "6px", cursor: "pointer" }}>
-          <SettingIcon style={{ width: "16px", height: "16px", color: theme.textTertiary }} />
-          <Text style={{ color: theme.textSecondary, fontSize: "13px" }}>Settings</Text>
-        </Flex>
-        <Flex alignItems="center" gap={8} padding={8} style={{ borderRadius: "6px", cursor: "pointer" }}>
-          <HelpIcon style={{ width: "16px", height: "16px", color: theme.textTertiary }} />
-          <Text style={{ color: theme.textSecondary, fontSize: "13px" }}>Help & Tips</Text>
-        </Flex>
-      </Flex>
+
     </Flex>
   );
 };

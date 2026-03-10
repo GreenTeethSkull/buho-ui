@@ -80,9 +80,9 @@ interface EmptyChatProps {
 
 const SUGGESTIONS = [
   { text: "¿Cuántos problemas activos existen en Dynatrace?", icon: AgentIcon, color: "#58a6ff" },
-  { text: "Muéstrame un análisis de logs del microservicio ms-ux-ma-miep", icon: SaveIcon, color: "#a371f7" },
-  { text: "¿Existen tickets en ServiceNow relacionados con errores?", icon: DocumentIcon, color: "#3fb950" },
-  { text: "Busca en archivos postmortem problemas anteriores", icon: CodeIcon, color: "#f0883e" },
+  { text: "Muéstrame un análisis del microservicio ms-ux-ma-miep-gestion-cliente", icon: SaveIcon, color: "#a371f7" },
+  { text: "¿Existen tickets en ServiceNow relacionados con Emision Rentas?", icon: DocumentIcon, color: "#3fb950" },
+  { text: "Busca en archivos postmortem problemas anteriores de GuideWire", icon: CodeIcon, color: "#f0883e" },
 ];
 
 export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {

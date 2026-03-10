@@ -3,6 +3,7 @@ import { ProgressCircle } from "@dynatrace/strato-components/content";
 import { AiLoadingIndicator } from "@dynatrace/strato-components-preview/content";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text } from "@dynatrace/strato-components/typography";
+import { Select, SelectOption, SelectContent, SelectTrigger } from "@dynatrace/strato-components-preview/forms";
 import { OpenSidebarIcon, AIModelIcon } from "@dynatrace/strato-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -126,20 +127,44 @@ export const Chat: React.FC = () => {
       />
 
       <Flex flexDirection="column" style={{ flex: 1, overflow: "hidden" }}>
-        {!sidebarOpen && (
-          <Flex alignItems="center" padding={8} paddingLeft={12} style={{ background: theme.inputAreaBg, borderBottom: `1px solid ${theme.inputAreaBorder}` }}>
-            <Button variant="default" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: theme.surfaceHover, border: `1px solid ${theme.inputBorder}`, padding: "6px 8px" }}>
-              <OpenSidebarIcon />
-            </Button>
+        <Flex alignItems="center" justifyContent="space-between" padding={8} paddingLeft={12} style={{ background: theme.inputAreaBg, borderBottom: `1px solid ${theme.inputAreaBorder}` }}>
+          <Flex alignItems="center" gap={8}>
+            {!sidebarOpen && (
+              <Button variant="default" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: theme.surfaceHover, border: `1px solid ${theme.border}`, padding: "4px 6px", minHeight: "auto" }}>
+                <OpenSidebarIcon style={{ width: "14px", height: "14px" }} />
+              </Button>
+            )}
+            <Flex alignItems="center" gap={6}>
+              <Text style={{ color: theme.textSecondary, fontSize: "12px", fontWeight: 500 }}>Agente:</Text>
+              <Select value={selectedModel} onChange={(v) => setSelectedModel(v as string)} disabled={sessionState.isActive}>
+                <SelectTrigger style={{ minWidth: "100px", height: "28px", background: theme.inputBg, border: `1px solid ${theme.inputBorder}`, borderRadius: "4px", color: theme.textPrimary, fontSize: "12px", padding: "0 8px", cursor: sessionState.isActive ? "not-allowed" : "pointer" }} />
+                <SelectContent style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: "6px" }}>
+                  {MOCK_MODELS.map((model) => (
+                    <SelectOption key={model.id} value={model.id} style={{ color: theme.textPrimary, borderRadius: "4px", padding: "6px 10px", fontSize: "12px" }}>
+                      {model.name}
+                    </SelectOption>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Flex>
           </Flex>
-        )}
+          <Flex alignItems="center" gap={12}>
+            {isConnected && (
+              <Flex alignItems="center" gap={4}>
+                <Flex style={{ width: "6px", height: "6px", borderRadius: "50%", background: theme.success }} />
+                <span style={{ color: theme.success, fontSize: "11px", fontWeight: 500 }}>Conectado</span>
+              </Flex>
+            )}
+            <span style={{ color: theme.textTertiary, fontSize: "11px" }}>{sessionState.messages.length} mens.</span>
+          </Flex>
+        </Flex>
         
         <Flex flexDirection="column" style={{ flex: 1, overflowY: "auto", background: theme.chatBg }}>
           {isLoading ? (
             <Flex justifyContent="center" alignItems="center" style={{ flex: 1 }}>
               <Flex flexDirection="column" alignItems="center" gap={16}>
                 <ProgressCircle />
-                <Text style={{ color: theme.textTertiary }}>Loading conversation...</Text>
+                <Text style={{ color: theme.textTertiary }}>Cargando conversación...</Text>
               </Flex>
             </Flex>
           ) : sessionState.messages.length === 0 ? (
@@ -152,7 +177,7 @@ export const Chat: React.FC = () => {
               {showLoadingIndicator && (
                 <AiLoadingIndicator>
                   <AiLoadingIndicator.Icon><AIModelIcon /></AiLoadingIndicator.Icon>
-                  Generating answer...
+                  Generando respuesta...
                 </AiLoadingIndicator>
               )}
               <div ref={messagesEndRef} />
@@ -163,12 +188,6 @@ export const Chat: React.FC = () => {
         <ChatInput
           onSendMessage={(msg) => void handleSendMessage(msg)}
           disabled={sessionState.isConnecting || sessionState.isSending}
-          models={MOCK_MODELS}
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          modelDisabled={sessionState.isActive}
-          messageCount={sessionState.messages.length}
-          isConnected={isConnected}
         />
       </Flex>
     </Flex>
