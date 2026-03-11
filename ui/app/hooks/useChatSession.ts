@@ -18,6 +18,13 @@ export interface ChatSessionState {
     isSending: boolean;
 }
 
+const max_lenght = 40;
+
+const generateTitle = (text: string): string => {
+    const trimmed = text.trim();
+    return trimmed.length > max_lenght ? trimmed.slice(0, max_lenght).trimEnd() + "…" : trimmed;
+};
+
 export const useChatSession = () => {
     const [sessionState, setSessionState] = useState<ChatSessionState>({
         isActive: false,
@@ -103,12 +110,12 @@ export const useChatSession = () => {
         let receivedBotMessage = false;
         for (const activity of data.activities) {
             console.log("[useChatSession] Processing activity:", activity);
-            
+
             if (!activity.id) {
                 console.log("[useChatSession] Activity has no id, skipping");
                 continue;
             }
-            
+
             if (processedActivityIds.current.has(activity.id)) {
                 console.log("[useChatSession] Activity already processed:", activity.id);
                 continue;
@@ -179,7 +186,7 @@ export const useChatSession = () => {
 
                 const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 console.log("[useChatSession] Step 2: Creating document for:", conversationId);
-                
+
                 const now = new Date().toISOString();
                 const initialContent: ConversationDocument = {
                     conversationId,
@@ -215,7 +222,7 @@ export const useChatSession = () => {
                     console.log("[useChatSession] DirectLine conversation created:", directLineConversation.conversationId);
                     processedActivityIds.current.clear();
                     directLineConversationRef.current = directLineConversation;
-                    
+
                     setSessionState({
                         isActive: true,
                         documentId: docResult.id,
@@ -224,7 +231,7 @@ export const useChatSession = () => {
                         isConnecting: false,
                         isSending: false,
                     });
-                    
+
                     return true;
                 } else {
                     console.error("[useChatSession] Failed to create DirectLine conversation");
@@ -311,13 +318,24 @@ export const useChatSession = () => {
             const currentConversationId = conversationIdRef.current || sessionState.conversationId;
             console.log("[useChatSession] sendMessage called:", text);
             console.log("[useChatSession] isConnected:", isConnected, "conversationId:", currentConversationId);
-            
+
             if (!currentConversationId) {
                 console.error("[useChatSession] No conversation ID");
                 return false;
             }
 
             setSessionState((prev) => ({ ...prev, isSending: true }));
+
+            // --- TITLE GENERATION: on first user message ---
+            const isFirstMessage = (conversationContentRef.current?.messages ?? []).length === 0;
+            if (isFirstMessage && conversationContentRef.current) {
+                const title = generateTitle(text);
+                documentNameRef.current = title;
+                conversationContentRef.current = {
+                    ...conversationContentRef.current,
+                    title,
+                };
+            }
 
             const userMessage: ConversationMessage = {
                 role: "user",
@@ -347,6 +365,11 @@ export const useChatSession = () => {
                     ...conversationContentRef.current,
                     messages: [...conversationContentRef.current.messages, userMessage],
                 };
+            }
+
+            // Persist immediately on first message so the title appears in the sidebar right away
+            if (isFirstMessage) {
+                await persistConversation();
             }
 
             console.log("[useChatSession] Sending activity to DirectLine...");
@@ -397,6 +420,7 @@ export const useChatSession = () => {
             handleBotMessage,
             isConnected,
             RESPONSE_TIMEOUT_MS,
+            persistConversation,
             sendActivity,
             sessionState.conversationId,
             startPolling,

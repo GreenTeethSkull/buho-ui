@@ -124,9 +124,11 @@ export const Chat: React.FC = () => {
       if (shouldStartSession) {
         const success = await startNewSession(selectedModel);
         if (!success) { console.error("Failed to start session"); return; }
-        refetchConversations();
       }
       await sendMessage(content);
+      if (shouldStartSession) {
+        refetchConversations();
+      }
     } finally {
       if (shouldStartSession) setIsStartingMessage(false);
     }
