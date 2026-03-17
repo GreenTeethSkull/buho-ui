@@ -38,7 +38,7 @@ export const Chat: React.FC = () => {
 
   const { conversations: conversationsList, refetch: refetchConversations } = useConversationsList();
   const { deleteConversation } = useConversationManager();
-  const { sessionState, isConnected, startNewSession, resumeSession, sendMessage, endSession } = useChatSession();
+  const { sessionState, startNewSession, resumeSession, sendMessage, endSession } = useChatSession();
   const { document: selectedDoc, isLoading: isLoadingDoc } = useConversationContent(activeConversationId);
 
   const scrollToBottom = () => {
@@ -134,7 +134,7 @@ export const Chat: React.FC = () => {
     }
   }, [refetchConversations, selectedModel, sendMessage, sessionState.isActive, startNewSession]);
 
-  const isLoading = sessionState.isConnecting || (((isLoadingDoc && activeConversationId) || isStartingMessage) && sessionState.messages.length === 0);
+  const isLoading = (((isLoadingDoc && activeConversationId) || isStartingMessage) && sessionState.messages.length === 0);
   const lastMessageIsFromUser = sessionState.messages.length > 0 && sessionState.messages[sessionState.messages.length - 1].role === "user";
   const showLoadingIndicator = sessionState.isSending || (lastMessageIsFromUser && sessionState.isSending);
   const modelSelectorDisabled = sessionState.isActive;
@@ -211,12 +211,6 @@ export const Chat: React.FC = () => {
             </Flex>
           </Flex>
           <Flex alignItems="center" gap={12}>
-            {isConnected && (
-              <Flex alignItems="center" gap={4}>
-                <Flex style={{ width: "6px", height: "6px", borderRadius: "50%", background: theme.success }} />
-                <span style={{ color: theme.success, fontSize: "11px", fontWeight: 500 }}>Conectado</span>
-              </Flex>
-            )}
             <span style={{ color: theme.textTertiary, fontSize: "11px" }}>{sessionState.messages.length} mens.</span>
           </Flex>
         </Flex>
@@ -249,7 +243,7 @@ export const Chat: React.FC = () => {
 
         <ChatInput
           onSendMessage={(msg) => void handleSendMessage(msg)}
-          disabled={sessionState.isConnecting || sessionState.isSending}
+          disabled={sessionState.isSending}
         />
       </Flex>
     </Flex>
