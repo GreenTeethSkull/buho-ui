@@ -13,6 +13,7 @@ export interface ConversationDetails {
 
 export interface ConversationDocument {
     conversationId: string;
+    copilotConversationId?: string;
     title?: string;
     modelId: string;
     messages: ConversationMessage[];
