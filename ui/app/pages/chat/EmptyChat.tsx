@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Heading } from "@dynatrace/strato-components/typography";
 import { AiIcon, AgentIcon, SaveIcon, DocumentIcon, CodeIcon } from "@dynatrace/strato-icons";
-import { useChatTheme } from "../../hooks/useChatTheme";
+import Colors from "@dynatrace/strato-design-tokens/colors";
 
 const ThinkingCircle: React.FC = () => {
-  const theme = useChatTheme();
   const [particles, setParticles] = useState<{ id: number; delay: number }[]>([]);
 
   useEffect(() => {
@@ -33,7 +32,7 @@ const ThinkingCircle: React.FC = () => {
             width: `${60 + ring * 28}px`,
             height: `${60 + ring * 28}px`,
             borderRadius: "50%",
-            border: `2px solid ${theme.accent}${[60, 35, 20][ring]}`,
+            border: `2px solid ${Colors.Text.Primary.Default}${[60, 35, 20][ring]}`,
             animation: "pulseRing 2s ease-in-out infinite",
             animationDelay: `${ring * 0.35}s`,
             ["--o1" as string]: [0.7, 0.4, 0.25][ring],
@@ -49,7 +48,7 @@ const ThinkingCircle: React.FC = () => {
             width: "5px",
             height: "5px",
             borderRadius: "50%",
-            background: theme.accent,
+            background: Colors.Text.Primary.Default,
             animation: "floatParticle 2.5s ease-in-out infinite",
             animationDelay: `${p.delay}s`,
             ["--r" as string]: `${p.id * 30}deg`,
@@ -63,12 +62,12 @@ const ThinkingCircle: React.FC = () => {
           width: "70px",
           height: "70px",
           borderRadius: "50%",
-          background: `linear-gradient(135deg, ${theme.accent}30, ${theme.accent}60)`,
-          boxShadow: `0 0 35px ${theme.accent}50, 0 0 70px ${theme.accent}25, inset 0 0 20px rgba(255,255,255,0.15)`,
+          background: `linear-gradient(135deg, ${Colors.Text.Primary.Default}30, ${Colors.Text.Primary.Default}60)`,
+          boxShadow: `0 0 35px ${Colors.Text.Primary.Default}50, 0 0 70px ${Colors.Text.Primary.Default}25, inset 0 0 20px rgba(255,255,255,0.15)`,
           zIndex: 10,
         }}
       >
-        <AiIcon style={{ width: "34px", height: "34px", color: theme.accent }} />
+        <AiIcon style={{ width: "34px", height: "34px", color: Colors.Text.Primary.Default }} />
       </Flex>
     </Flex>
   );
@@ -79,14 +78,13 @@ interface EmptyChatProps {
 }
 
 const SUGGESTIONS = [
-  { text: "¿Cuántos problemas activos existen en Dynatrace?", icon: AgentIcon, color: "#58a6ff" },
-  { text: "Muéstrame un análisis del microservicio ms-ux-ma-miep-gestion-cliente", icon: SaveIcon, color: "#a371f7" },
-  { text: "¿Existen tickets en ServiceNow relacionados con Emision Rentas?", icon: DocumentIcon, color: "#3fb950" },
-  { text: "Busca en archivos postmortem problemas anteriores de GuideWire", icon: CodeIcon, color: "#f0883e" },
+  { text: "¿Cuántos problemas activos existen en Dynatrace?", icon: AgentIcon, color: Colors.Text.Primary.Default },
+  { text: "Muéstrame un análisis del microservicio ms-ux-ma-miep-gestion-cliente", icon: SaveIcon, color: Colors.Theme.Primary['70'] },
+  { text: "¿Existen tickets en ServiceNow relacionados con Emision Rentas?", icon: DocumentIcon, color: Colors.Text.Success.Default },
+  { text: "Busca en archivos postmortem problemas anteriores de GuideWire", icon: CodeIcon, color: Colors.Text.Warning.Default },
 ];
 
 export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
-  const theme = useChatTheme();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const handleClick = (suggestion: string) => { if (onSuggestionClick) onSuggestionClick(suggestion); };
@@ -96,8 +94,8 @@ export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
       <Flex flexDirection="column" alignItems="center" gap={16}>
         <ThinkingCircle />
         <Flex flexDirection="column" alignItems="center" gap={8}>
-          <Heading level={1} style={{ color: theme.textPrimary, textAlign: "center", fontSize: "24px", fontWeight: 700 }}>Lucy AI</Heading>
-          <span style={{ color: theme.textTertiary, textAlign: "center", maxWidth: "400px", fontSize: "14px", lineHeight: "1.6" }}>
+          <Heading level={1} style={{ color: Colors.Text.Neutral.Default, textAlign: "center", fontSize: "24px", fontWeight: 700 }}>Lucy AI</Heading>
+          <span style={{ color: Colors.Text.Neutral.Subdued, textAlign: "center", maxWidth: "400px", fontSize: "14px", lineHeight: "1.6" }}>
             Puedo extraer y correlacionar información de Dynatrace, Github, ServiceNow y archivos postmortem
           </span>
         </Flex>
@@ -112,10 +110,10 @@ export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
               onMouseLeave={() => setHoveredIndex(null)}
               onClick={() => handleClick(sug.text)}
               style={{
-                background: hoveredIndex === index ? theme.surfaceHover : theme.surface,
+                background: hoveredIndex === index ? Colors.Background.Container.Neutral.Default : Colors.Background.Container.Neutral.Emphasized,
                 borderRadius: "10px",
                 cursor: "pointer",
-                border: `1px solid ${hoveredIndex === index ? sug.color : theme.sidebarBorder}`,
+                border: `1px solid ${hoveredIndex === index ? sug.color : Colors.Border.Neutral.Default}`,
                 transition: "all 0.2s ease",
                 transform: hoveredIndex === index ? "translateY(-2px)" : "translateY(0)",
               }}
@@ -124,7 +122,7 @@ export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
                 <Flex alignItems="center" justifyContent="center" style={{ width: "28px", height: "28px", borderRadius: "6px", background: `${sug.color}20`, flexShrink: 0 }}>
                   <IconComponent style={{ width: "14px", height: "14px", color: sug.color }} />
                 </Flex>
-                <span style={{ color: theme.textSecondary, fontSize: "13px", lineHeight: "1.5", flex: 1 }}>{sug.text}</span>
+                <span style={{ color: Colors.Text.Neutral.Subdued, fontSize: "13px", lineHeight: "1.5", flex: 1 }}>{sug.text}</span>
               </Flex>
             </Flex>
           );

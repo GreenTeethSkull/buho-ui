@@ -1,25 +1,48 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Flex } from "@dynatrace/strato-components/layouts";
-import { ArrowRightIcon } from "@dynatrace/strato-icons";
-import { useChatTheme } from "../../hooks/useChatTheme";
+import { ArrowUpIcon } from "@dynatrace/strato-icons";
+import Colors from "@dynatrace/strato-design-tokens/colors";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
 }
 
-const MIN_HEIGHT = 38;
-const MAX_HEIGHT = 76;
+const MIN_HEIGHT = 52;
+const MAX_HEIGHT = 200;
 
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled = false,
 }) => {
-  const theme = useChatTheme();
   const [message, setMessage] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevDisabledRef = useRef(disabled);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag !== "TEXTAREA" && tag !== "INPUT" && tag !== "SELECT") {
+          e.preventDefault();
+          textareaRef.current?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (prevDisabledRef.current && !disabled) {
+      textareaRef.current?.focus();
+    }
+    prevDisabledRef.current = disabled;
+  }, [disabled]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -39,6 +62,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       setMessage("");
       if (textareaRef.current) {
         textareaRef.current.style.height = `${MIN_HEIGHT}px`;
+        textareaRef.current.focus();
       }
     }
   };
@@ -53,8 +77,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const canSend = !!message.trim() && !disabled;
 
   return (
-    <Flex flexDirection="column" padding={12} style={{ background: theme.inputAreaBg, borderTop: `1px solid ${theme.inputAreaBorder}` }}>
-      <Flex alignItems="flex-end" gap={8}>
+    <div style={{
+      padding: "8px 16px 12px",
+      background: Colors.Background.Base.Default,
+    }}>
+      <div style={{
+        display: "flex",
+        alignItems: "flex-end",
+        gap: "8px",
+        background: Colors.Background.Surface.Default,
+        borderRadius: "12px",
+        border: `1px solid ${isFocused ? Colors.Border.Primary.Accent : Colors.Border.Neutral.Default}`,
+        boxShadow: isFocused
+          ? `0 0 0 2px ${Colors.Border.Primary.Accent}25`
+          : "none",
+        transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+        padding: "10px 12px",
+      }}>
         <textarea
           ref={textareaRef}
           value={message}
@@ -67,11 +106,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           rows={1}
           style={{
             flex: 1,
-            background: theme.inputBg,
-            border: `1px solid ${isFocused ? theme.inputFocusBorder : theme.inputBorder}`,
-            borderRadius: "24px",
-            padding: "8px 18px",
-            color: theme.textPrimary,
+            background: "transparent",
+            border: "none",
+            padding: "2px 0",
+            color: Colors.Text.Neutral.Default,
             fontSize: "14px",
             lineHeight: "22px",
             outline: "none",
@@ -81,42 +119,37 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             minHeight: `${MIN_HEIGHT}px`,
             maxHeight: `${MAX_HEIGHT}px`,
             resize: "none",
-            overflowY: "auto",
-            transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-            boxShadow: isFocused ? `0 0 0 3px ${theme.accentBg}` : "none",
-            display: "block",
+            overflowY: "hidden",
           }}
         />
         <button
           onClick={handleSend}
           disabled={!canSend}
           aria-label="Enviar"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
           style={{
-            background: canSend
-              ? isHovered ? theme.buttonPrimaryHover : theme.buttonPrimaryBg
-              : theme.surfaceHover,
+            background: canSend ? Colors.Theme.Primary['60'] : Colors.Background.Container.Neutral.Default,
             border: "none",
-            borderRadius: "50%",
-            width: "36px",
-            height: "36px",
-            minWidth: "36px",
+            borderRadius: "8px",
+            width: "32px",
+            height: "32px",
+            minWidth: "32px",
             flexShrink: 0,
             padding: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "all 0.2s ease",
+            transition: "all 0.15s ease",
             cursor: canSend ? "pointer" : "not-allowed",
-            opacity: canSend ? 1 : 0.5,
-            color: canSend ? theme.buttonPrimaryText : theme.textTertiary,
+            opacity: canSend ? 1 : 0.35,
+            color: canSend ? "#ffffff" : Colors.Text.Neutral.Subdued,
             fontFamily: "inherit",
+            marginBottom: "1px",
+            lineHeight: 0,
           }}
         >
-          <ArrowRightIcon style={{ width: "16px", height: "16px" }} />
+          <ArrowUpIcon style={{ width: "16px", height: "16px" }} />
         </button>
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };
