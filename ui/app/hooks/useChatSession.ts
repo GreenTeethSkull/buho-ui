@@ -1,18 +1,8 @@
 import { useState, useCallback, useRef } from "react";
-import { useAppFunctionExecutor } from "./useAppFunctionExecutor";
 import { useConversationManager } from "./useConversationManager";
+import { usePollingResponse } from "./usePollingResponse";
 import type { ConversationDocument, ConversationMessage } from "../domain/conversation";
 import { sendChatLog } from "../services/logService";
-
-interface WebhookInput {
-    text: string;
-    copilotConversationId?: string;
-}
-
-interface WebhookOutput {
-    responses: string[];
-    conversationId: string;
-}
 
 export interface ChatSessionState {
     isActive: boolean;
@@ -38,9 +28,7 @@ export const useChatSession = () => {
         isSending: false,
     });
 
-    const { executeAsync: sendWebhook } = useAppFunctionExecutor<WebhookInput, WebhookOutput>(
-        "copilot-webhook"
-    );
+    const { sendWithPolling } = usePollingResponse();
 
     const {
         createConversation: createConversationDoc,
@@ -189,12 +177,31 @@ export const useChatSession = () => {
             }
 
             try {
-                const result = await sendWebhook({
+                const result = await sendWithPolling(
                     text,
-                    copilotConversationId: copilotConversationIdRef.current ?? undefined,
-                });
+                    copilotConversationIdRef.current,
+                    (elapsedSeconds, progressMessage) => {
+                        if (progressMessage) {
+                            const systemMessage: ConversationMessage = {
+                                role: "system",
+                                content: progressMessage,
+                                timestamp: new Date().toISOString(),
+                            };
+                            setSessionState((prev) => ({
+                                ...prev,
+                                messages: [...prev.messages, systemMessage],
+                            }));
+                            if (documentIdRef.current && conversationContentRef.current) {
+                                conversationContentRef.current = {
+                                    ...conversationContentRef.current,
+                                    messages: [...conversationContentRef.current.messages, systemMessage],
+                                };
+                            }
+                        }
+                    }
+                );
 
-                if (!copilotConversationIdRef.current && result.conversationId) {
+                if (result.conversationId) {
                     copilotConversationIdRef.current = result.conversationId;
                     if (conversationContentRef.current) {
                         conversationContentRef.current = {
@@ -204,44 +211,54 @@ export const useChatSession = () => {
                     }
                 }
 
-                for (const responseText of result.responses) {
-                    const botMessage: ConversationMessage = {
-                        role: "assistant",
-                        content: responseText,
-                        timestamp: new Date().toISOString(),
+                const botMessage: ConversationMessage = {
+                    role: "assistant",
+                    content: result.response,
+                    timestamp: new Date().toISOString(),
+                };
+
+                setSessionState((prev) => {
+                    const filtered = prev.messages.filter((m) => m.role !== "system");
+                    return { ...prev, messages: [...filtered, botMessage] };
+                });
+
+                if (documentIdRef.current && conversationContentRef.current) {
+                    const filtered = conversationContentRef.current.messages.filter((m) => m.role !== "system");
+                    conversationContentRef.current = {
+                        ...conversationContentRef.current,
+                        messages: [...filtered, botMessage],
                     };
-
-                    setSessionState((prev) => ({
-                        ...prev,
-                        messages: [...prev.messages, botMessage],
-                    }));
-
-                    if (documentIdRef.current && conversationContentRef.current) {
-                        conversationContentRef.current = {
-                            ...conversationContentRef.current,
-                            messages: [...conversationContentRef.current.messages, botMessage],
-                        };
-                    }
-
-                    sendChatLog({
-                        conversationId: currentConversationId,
-                        model: conversationContentRef.current?.modelId ?? "",
-                        role: "assistant",
-                        text: responseText,
-                        timestamp: botMessage.timestamp,
-                    });
                 }
+
+                sendChatLog({
+                    conversationId: currentConversationId,
+                    model: conversationContentRef.current?.modelId ?? "",
+                    role: "assistant",
+                    text: result.response,
+                    timestamp: botMessage.timestamp,
+                });
 
                 await persistConversation();
                 return true;
             } catch (error) {
                 console.error("[useChatSession] Error sending message:", error);
+                const errorMessage: ConversationMessage = {
+                    role: "system",
+                    content: error instanceof Error
+                        ? error.message
+                        : "Se ha producido un error al generar la respuesta. Por favor, intenta nuevamente.",
+                    timestamp: new Date().toISOString(),
+                };
+                setSessionState((prev) => {
+                    const filtered = prev.messages.filter((m) => m.role !== "system");
+                    return { ...prev, messages: [...filtered, errorMessage] };
+                });
                 return false;
             } finally {
                 setSessionState((prev) => ({ ...prev, isSending: false }));
             }
         },
-        [persistConversation, sendWebhook, sessionState.conversationId]
+        [persistConversation, sendWithPolling, sessionState.conversationId]
     );
 
     const endSession = useCallback(() => {

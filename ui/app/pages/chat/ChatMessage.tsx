@@ -132,6 +132,28 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     setLiked(liked === like ? null : like);
   };
 
+  if (message.role === "system") {
+    return (
+      <Flex justifyContent="center" style={{ padding: "12px 20px", background: Colors.Background.Base.Default }}>
+        <Flex alignItems="center" gap={8} style={{
+          background: Colors.Background.Container.Neutral.Default,
+          border: `1px solid ${Colors.Border.Neutral.Default}`,
+          borderRadius: "20px",
+          padding: "8px 16px",
+          maxWidth: "80%",
+        }}>
+          <span style={{
+            fontSize: "13px",
+            color: Colors.Text.Neutral.Subdued,
+            fontStyle: "italic",
+          }}>
+            {message.content}
+          </span>
+        </Flex>
+      </Flex>
+    );
+  }
+
   if (isUser) {
     return (
       <Flex flexDirection="column" alignItems="flex-end" style={{ padding: "8px 20px", background: Colors.Background.Base.Default }}>

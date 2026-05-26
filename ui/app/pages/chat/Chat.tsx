@@ -149,7 +149,8 @@ export const Chat: React.FC = () => {
 
   const isLoading = (((isLoadingDoc && activeConversationId) || isStartingMessage) && sessionState.messages.length === 0);
   const lastMessageIsFromUser = sessionState.messages.length > 0 && sessionState.messages[sessionState.messages.length - 1].role === "user";
-  const showLoadingIndicator = sessionState.isSending || (lastMessageIsFromUser && sessionState.isSending);
+  const lastMessageIsSystem = sessionState.messages.length > 0 && sessionState.messages[sessionState.messages.length - 1].role === "system";
+  const showLoadingIndicator = sessionState.isSending && !lastMessageIsSystem && (lastMessageIsFromUser || sessionState.isSending);
 
   return (
     <Flex style={{ height: "100%", overflow: "hidden", background: Colors.Background.Base.Default }}>
