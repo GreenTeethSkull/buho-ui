@@ -19,9 +19,11 @@ export const useConversationsList = (): ConversationListHook => {
     isLoading,
     error,
     refetch,
-  } = useListDocuments(
+  } =   useListDocuments(
     {
       filter: `type=='${CONVERSATION_DOC_TYPE}'`,
+      sort: '-modificationInfo.lastModifiedTime',
+      pageSize: 30,
     },
     {
       autoFetch: true,
