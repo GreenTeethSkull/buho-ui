@@ -3,13 +3,12 @@ import { useAppFunctionExecutor } from "./useAppFunctionExecutor";
 
 const POLLING_INTERVAL_MS = 15_000;
 const MAX_POLLING_TIME_MS = 300_000;
-const PROGRESS_INTERVAL_MS = 1_000;
 
 const PROGRESS_MESSAGES: Record<number, string> = {
-    60: "Estoy analizando toda la información para darte la mejor respuesta...",
-    120: "Continúo analizando la información, gracias por tu paciencia...",
-    180: "El análisis es más extenso de lo esperado, sigo trabajando en ello...",
-    240: "Casi listo, proceso la información restante...",
+    1: "Estoy analizando toda la información para darte la mejor respuesta...",
+    2: "Continúo analizando la información, gracias por tu paciencia...",
+    3: "El análisis es más extenso de lo esperado, sigo trabajando en ello...",
+    4: "Casi listo, proceso la información restante...",
 };
 
 interface SendMessageInput {
@@ -65,6 +64,20 @@ export const usePollingResponse = () => {
             }
             isPollingRef.current = true;
 
+            const startTime = Date.now();
+            let lastProgressMinute = 0;
+
+            const getElapsedSeconds = () => Math.floor((Date.now() - startTime) / 1000);
+
+            const checkProgress = () => {
+                const elapsed = getElapsedSeconds();
+                const currentMinute = Math.floor(elapsed / 60);
+                if (currentMinute > lastProgressMinute && PROGRESS_MESSAGES[currentMinute]) {
+                    lastProgressMinute = currentMinute;
+                    onProgress?.(elapsed, PROGRESS_MESSAGES[currentMinute]);
+                }
+            };
+
             try {
                 const sendResult = await sendAppFunction({
                     text,
@@ -73,56 +86,42 @@ export const usePollingResponse = () => {
 
                 const { rowId } = sendResult;
 
-                return await new Promise<PollingResult>((resolve, reject) => {
-                    let elapsed = 0;
-                    let lastProgressMinute = 0;
+                const pollLoop = (): Promise<PollingResult> =>
+                    new Promise<PollingResult>((resolve, reject) => {
+                        checkProgress();
 
-                    const cleanup = () => {
-                        clearInterval(pollIntervalId);
-                        clearInterval(elapsedIntervalId);
-                        clearTimeout(timeoutId);
-                        isPollingRef.current = false;
-                    };
-
-                    const pollOnce = async () => {
-                        try {
-                            const result = await pollAppFunction({ rowId });
-
-                            if (result.status === "1" && result.response) {
-                                cleanup();
-                                resolve({
-                                    response: result.response,
-                                    conversationId: result.conversationId,
-                                });
-                            }
-                        } catch (err) {
-                            cleanup();
-                            reject(err instanceof Error ? err : new Error(String(err)));
+                        if (getElapsedSeconds() * 1000 >= MAX_POLLING_TIME_MS) {
+                            reject(
+                                new Error(
+                                    "La respuesta ha tardado más de lo esperado. Por favor, intenta nuevamente."
+                                )
+                            );
+                            return;
                         }
-                    };
 
-                    const pollIntervalId = setInterval(() => { void pollOnce(); }, POLLING_INTERVAL_MS);
+                        void pollAppFunction({ rowId })
+                            .then((result) => {
+                                checkProgress();
 
-                    const elapsedIntervalId = setInterval(() => {
-                        elapsed += 1;
-                        const currentMinute = Math.floor(elapsed / 60);
-                        if (currentMinute > lastProgressMinute && PROGRESS_MESSAGES[currentMinute]) {
-                            lastProgressMinute = currentMinute;
-                            onProgress?.(elapsed, PROGRESS_MESSAGES[currentMinute]);
-                        }
-                    }, PROGRESS_INTERVAL_MS);
+                                if (result.status === "1" && result.response) {
+                                    resolve({
+                                        response: result.response,
+                                        conversationId: result.conversationId,
+                                    });
+                                } else {
+                                    setTimeout(() => {
+                                        void pollLoop().then(resolve, reject);
+                                    }, POLLING_INTERVAL_MS);
+                                }
+                            })
+                            .catch((err) => {
+                                reject(err instanceof Error ? err : new Error(String(err)));
+                            });
+                    });
 
-                    const timeoutId = setTimeout(() => {
-                        cleanup();
-                        reject(
-                            new Error(
-                                "La respuesta ha tardado más de lo esperado. Por favor, intenta nuevamente."
-                            )
-                        );
-                    }, MAX_POLLING_TIME_MS);
-
-                    void pollOnce();
-                });
+                const result = await pollLoop();
+                isPollingRef.current = false;
+                return result;
             } catch (error) {
                 isPollingRef.current = false;
                 throw error;
