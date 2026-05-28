@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useAppFunctionExecutor } from "./useAppFunctionExecutor";
 
-const POLLING_INTERVAL_MS = 15_000;
+const POLLING_INTERVAL_MS = 7_000;
 const MAX_POLLING_TIME_MS = 300_000;
 
 const PROGRESS_MESSAGES: Record<number, string> = {
