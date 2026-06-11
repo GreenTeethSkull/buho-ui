@@ -1,7 +1,10 @@
 import { readNonEmptyString, readOptionalString } from './copilot-directline.shared';
 
+// const POLL_RESPONSE_URL =
+//     'https://c33d836546e2e3fdad9083dfdfe350.e7.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/40d345033a50417a8b7fdfcd1883fcd3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bw52ZVHWQRu09pDe5MxyU29b95G5lD0jei7bf1G3ykI';
+
 const POLL_RESPONSE_URL =
-    'https://c33d836546e2e3fdad9083dfdfe350.e7.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/40d345033a50417a8b7fdfcd1883fcd3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bw52ZVHWQRu09pDe5MxyU29b95G5lD0jei7bf1G3ykI';
+    'https://87129083fbbee240961042521504ad.e6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/04013af21fe74309ac3a0c72ed9d2107/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=oNuAh3mXnC4QXjrL0LnZoCz4KWOUG8zsk1-Bp7RhGmI';
 
 export interface CopilotPollResponseInput {
     rowId: string;

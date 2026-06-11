@@ -1,7 +1,10 @@
 import { readNonEmptyString, readOptionalString } from './copilot-directline.shared';
 
+// const SEND_MESSAGE_URL =
+//     'https://c33d836546e2e3fdad9083dfdfe350.e7.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1f9e5dc0b7f14cfe9b194bc00e42d7ab/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=9T4IuB01NnbnSnszv4v9GVx9qQ80tOS4KKeAtV8wctk';
+
 const SEND_MESSAGE_URL =
-    'https://c33d836546e2e3fdad9083dfdfe350.e7.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1f9e5dc0b7f14cfe9b194bc00e42d7ab/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=9T4IuB01NnbnSnszv4v9GVx9qQ80tOS4KKeAtV8wctk';
+    'https://87129083fbbee240961042521504ad.e6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9a04a913fde848c1af870be5e6c13c1f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Vu_cLtIAcwzzAay01_kYie0kairxqgZZUMFdcLfR-Wg';
 
 export interface CopilotSendMessageInput {
     text: string;
