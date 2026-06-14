@@ -17,7 +17,9 @@
       { "name": "app-engine:apps:run", "comment": "Run app functions" },
       { "name": "app-settings:objects:read", "comment": "Read app settings objects" },
       { "name": "settings:objects:read", "comment": "Read environment settings objects" },
-      { "name": "environment-api:credentials:read", "comment": "Read Credential Vault entries" }
+      { "name": "environment-api:credentials:read", "comment": "Read Credential Vault entries" },
+      { "name": "state:app-states:read", "comment": "Read tracking location from power automate platform"},
+      { "name": "state:app-states:write", "comment": "Write tracking id location from power automate" }
     ]
   }
 }
