@@ -114,7 +114,7 @@ export const useChatSession = () => {
     );
 
     const startNewSession = useCallback(
-        async (modelId: string): Promise<boolean> => {
+        async (modelId: string): Promise<string | null> => {
             try {
                 const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 const now = new Date().toISOString();
@@ -132,7 +132,7 @@ export const useChatSession = () => {
                     initialContent,
                 });
 
-                if (!docResult?.id) return false;
+                if (!docResult?.id) return null;
 
                 documentIdRef.current = docResult.id;
                 documentVersionRef.current = docResult.version || "1";
@@ -149,10 +149,10 @@ export const useChatSession = () => {
                     isSending: false,
                 });
 
-                return true;
+                return docResult.id;
             } catch (error) {
                 console.error("[useChatSession] Error starting new session:", error);
-                return false;
+                return null;
             }
         },
         [createConversationDoc]
