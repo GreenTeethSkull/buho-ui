@@ -12,6 +12,10 @@ export interface ChatSessionState {
     isSending: boolean;
 }
 
+const EMPTY_RESPONSE_MESSAGE =
+    "La respuesta generada excede el límite de procesamiento del agente y no pudo ser entregada. " +
+    "Te sugiero dividir tu consulta en partes más específicas para obtener una respuesta más precisa y detallada.";
+
 const STALE_TIMEOUT_MS = 600_000;
 const max_lenght = 40;
 
@@ -87,9 +91,10 @@ export const useChatSession = () => {
 
     const addAssistantMessage = useCallback(
         async (response: string, conversationId: string) => {
+            const content = response.trim().length > 0 ? response : EMPTY_RESPONSE_MESSAGE;
             const botMessage: ConversationMessage = {
                 role: "assistant",
-                content: response,
+                content,
                 timestamp: new Date().toISOString(),
             };
 
@@ -110,7 +115,7 @@ export const useChatSession = () => {
                 conversationId,
                 model: conversationContentRef.current?.modelId ?? "",
                 role: "assistant",
-                text: response,
+                text: content,
                 timestamp: botMessage.timestamp,
             });
 
