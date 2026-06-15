@@ -2,13 +2,18 @@ import { useCallback, useRef } from "react";
 import { useAppFunctionExecutor } from "./useAppFunctionExecutor";
 
 const POLLING_INTERVAL_MS = 7_000;
-const MAX_POLLING_TIME_MS = 300_000;
+const MAX_POLLING_TIME_MS = 600_000;
 
 const PROGRESS_MESSAGES: Record<number, string> = {
     1: "Estoy analizando toda la información para darte la mejor respuesta...",
     2: "Continúo analizando la información, gracias por tu paciencia...",
     3: "El análisis es más extenso de lo esperado, sigo trabajando en ello...",
-    4: "Casi listo, proceso la información restante...",
+    4: "Sigo procesando los datos, esto puede tomar unos minutos más...",
+    5: "Reviso los detalles para asegurar una respuesta completa...",
+    6: "Aún estoy trabajando en ello, agradezco tu paciencia...",
+    7: "Estoy organizando toda la información recopilada...",
+    8: "Ya casi termino, afino los últimos detalles...",
+    9: "Casi listo, proceso la información restante...",
 };
 
 interface SendMessageInput {
