@@ -1,53 +1,89 @@
+import { stateClient } from '@dynatrace-sdk/client-state';
 import { readNonEmptyString, readOptionalString } from './copilot-directline.shared';
 
-// const POLL_RESPONSE_URL =
-//     'https://c33d836546e2e3fdad9083dfdfe350.e7.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/40d345033a50417a8b7fdfcd1883fcd3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bw52ZVHWQRu09pDe5MxyU29b95G5lD0jei7bf1G3ykI';
+const MAX_POLL_DURATION_MS = 55_000;
+const APP_STATE_KEY_PREFIX = 'send-';
 
-const POLL_RESPONSE_URL =
-    'https://87129083fbbee240961042521504ad.e6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/04013af21fe74309ac3a0c72ed9d2107/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=oNuAh3mXnC4QXjrL0LnZoCz4KWOUG8zsk1-Bp7RhGmI';
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+interface SendMetadata {
+    locationUrl: string;
+    retryAfter: number;
+    createdAt: number;
+}
 
 export interface CopilotPollResponseInput {
-    rowId: string;
+    trackingId: string;
 }
 
-export interface CopilotPollResponseOutput {
-    executionId: string;
-    conversationId: string;
-    status: string;
-    response: string;
-}
+export type CopilotPollResponseOutput =
+    | {
+          status: 'completed';
+          conversationId: string;
+          response: string;
+      }
+    | {
+          status: 'running';
+          trackingId: string;
+      };
 
 export default async function (payload: CopilotPollResponseInput): Promise<CopilotPollResponseOutput> {
-    const rowId = readNonEmptyString(payload.rowId);
+    const trackingId = readNonEmptyString(payload.trackingId);
 
-    if (!rowId) {
-        throw new Error('rowId is required.');
+    if (!trackingId) {
+        throw new Error('trackingId is required.');
     }
 
-    const response = await fetch(POLL_RESPONSE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowId }),
+    const appState = await stateClient.getAppState({
+        key: `${APP_STATE_KEY_PREFIX}${trackingId}`,
     });
 
-    if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(
-            `Poll response request failed (HTTP ${response.status}): ${response.statusText}${errorBody ? ` - ${errorBody}` : ''}`
-        );
+    if (!appState.value) {
+        throw new Error(`No poll metadata found for trackingId: ${trackingId}`);
     }
 
-    const responseBody = (await response.json()) as Record<string, unknown>;
+    const metadata = JSON.parse(appState.value) as SendMetadata;
+    const { locationUrl, retryAfter } = metadata;
+    const pollIntervalMs = (retryAfter && retryAfter > 0 ? retryAfter : 10) * 1000;
+    const startedAt = Date.now();
 
-    const executionId = readOptionalString(responseBody.executionId) ?? '';
-    const conversationId = readOptionalString(responseBody.conversationId) ?? '';
-    const status = readOptionalString(responseBody.status) ?? '';
-    const responseText = readOptionalString(responseBody.response) ?? '';
+    while (true) {
+        const response = await fetch(locationUrl, {
+            method: 'GET',
+        });
 
-    return {
-        executionId,
-        conversationId,
-        status,
-        response: responseText,
-    };
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(
+                `Poll response request failed (HTTP ${response.status}): ${response.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+            );
+        }
+
+        const responseBody = (await response.json()) as Record<string, unknown>;
+
+        if (response.status === 200) {
+            const conversationId = readOptionalString(responseBody.conversationId) ?? '';
+            const responseText = readOptionalString(responseBody.response) ?? '';
+
+            return {
+                status: 'completed',
+                conversationId,
+                response: responseText,
+            };
+        }
+
+        if (response.status === 202) {
+            if (Date.now() - startedAt >= MAX_POLL_DURATION_MS) {
+                return {
+                    status: 'running',
+                    trackingId,
+                };
+            }
+
+            await delay(pollIntervalMs);
+            continue;
+        }
+
+        throw new Error(`Unexpected poll response status: ${response.status}`);
+    }
 }

@@ -20,6 +20,8 @@ export interface ConversationDocument {
     details?: ConversationDetails;
     createdAt: string;
     updatedAt: string;
+    pendingPollTrackingId?: string;
+    pendingPollCreatedAt?: number;
 }
 
 export interface Model {

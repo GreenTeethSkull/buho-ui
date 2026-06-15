@@ -116,7 +116,7 @@ export const useConversationManager = () => {
 export const useConversationContent = (id: string | null) => {
     const { data, isLoading, error, refetch } = useDocument(
         { id: id ?? "" },
-        { autoFetch: !!id, autoFetchOnUpdate: true }
+        { autoFetch: !!id, autoFetchOnUpdate: !!id }
     );
 
     return {
