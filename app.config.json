@@ -3,23 +3,44 @@
   "environmentUrl": "https://hmc05194.apps.dynatrace.com/",
   "app": {
     "name": "Lucy",
-    "version": "0.0.23",
+    "version": "0.0.24",
     "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
     "icon": "ui/assets/LUCY-ICON.png",
     "scopes": [
       { "name": "storage:logs:read", "comment": "default template" },
-      { "name": "storage:logs:write", "comment": "Ingest logs via Generic Log Ingest" },
+      {
+        "name": "storage:logs:write",
+        "comment": "Ingest logs via Generic Log Ingest"
+      },
       { "name": "storage:buckets:read", "comment": "default template" },
       { "name": "document:documents:read", "comment": "default template" },
       { "name": "document:documents:write", "comment": "default template" },
-      { "name": "document:documents:delete", "comment": "Enable document deletion" },
+      {
+        "name": "document:documents:delete",
+        "comment": "Enable document deletion"
+      },
       { "name": "app-engine:apps:run", "comment": "Run app functions" },
-      { "name": "app-settings:objects:read", "comment": "Read app settings objects" },
-      { "name": "settings:objects:read", "comment": "Read environment settings objects" },
-      { "name": "environment-api:credentials:read", "comment": "Read Credential Vault entries" },
-      { "name": "state:app-states:read", "comment": "Read tracking location from power automate platform"},
-      { "name": "state:app-states:write", "comment": "Write tracking id location from power automate" }
+      {
+        "name": "app-settings:objects:read",
+        "comment": "Read app settings objects"
+      },
+      {
+        "name": "settings:objects:read",
+        "comment": "Read environment settings objects"
+      },
+      {
+        "name": "environment-api:credentials:read",
+        "comment": "Read Credential Vault entries"
+      },
+      {
+        "name": "state:app-states:read",
+        "comment": "Read tracking location from power automate platform"
+      },
+      {
+        "name": "state:app-states:write",
+        "comment": "Write tracking id location from power automate"
+      }
     ]
   }
 }
