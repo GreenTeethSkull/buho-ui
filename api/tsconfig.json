@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "ignoreDeprecations": "6.0",
+        "ignoreDeprecations": true,
         "module": "esnext",
         "moduleResolution": "node",
         "target": "esnext",

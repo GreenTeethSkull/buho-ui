@@ -1,10 +1,11 @@
+import { stateClient } from '@dynatrace-sdk/client-state';
 import { readNonEmptyString, readOptionalString } from './copilot-directline.shared';
 
-// const SEND_MESSAGE_URL =
-//     'https://c33d836546e2e3fdad9083dfdfe350.e7.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1f9e5dc0b7f14cfe9b194bc00e42d7ab/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=9T4IuB01NnbnSnszv4v9GVx9qQ80tOS4KKeAtV8wctk';
-
 const SEND_MESSAGE_URL =
-    'https://87129083fbbee240961042521504ad.e6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9a04a913fde848c1af870be5e6c13c1f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Vu_cLtIAcwzzAay01_kYie0kairxqgZZUMFdcLfR-Wg';
+    'https://87129083fbbee240961042521504ad.e6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1afcd7a65f7640c3ad2fd3560e34c9ad/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=HpZ-rDF0vU2tgX2aJ--5JBDeB6LbVXJXGaCHUxka_zU';
+
+const APP_STATE_KEY_PREFIX = 'send-';
+const APP_STATE_TTL = 'now+30m';
 
 export interface CopilotSendMessageInput {
     text: string;
@@ -12,12 +13,14 @@ export interface CopilotSendMessageInput {
 }
 
 export interface CopilotSendMessageOutput {
-    status: string;
-    executionId: string;
-    rowId: string;
-    message: string;
-    receivedAt: string;
-    channelId: string;
+    trackingId: string;
+    retryAfter: number;
+}
+
+interface SendMetadata {
+    locationUrl: string;
+    retryAfter: number;
+    createdAt: number;
 }
 
 export default async function (payload: CopilotSendMessageInput): Promise<CopilotSendMessageOutput> {
@@ -69,25 +72,31 @@ export default async function (payload: CopilotSendMessageInput): Promise<Copilo
         );
     }
 
-    const responseBody = (await response.json()) as Record<string, unknown>;
+    const locationUrl = response.headers.get('location') ?? '';
+    const trackingId = response.headers.get('x-ms-tracking-id') ?? '';
+    const retryAfterHeader = response.headers.get('retry-after');
+    const retryAfter = retryAfterHeader ? Number(retryAfterHeader) : 10;
 
-    const status = readOptionalString(responseBody.status);
-    const executionId = readOptionalString(responseBody.executionId);
-    const rowId = readOptionalString(responseBody.rowId);
-    const message = readOptionalString(responseBody.message);
-    const receivedAt = readOptionalString(responseBody.received_at);
-    const channelId = readOptionalString(responseBody.channel_id);
-
-    if (!rowId) {
-        throw new Error('No rowId returned from send message endpoint.');
+    if (!locationUrl) {
+        throw new Error('No Location header returned from send message endpoint.');
     }
 
+    const metadata: SendMetadata = {
+        locationUrl,
+        retryAfter,
+        createdAt: Date.now(),
+    };
+
+    await stateClient.setAppState({
+        key: `${APP_STATE_KEY_PREFIX}${trackingId}`,
+        body: {
+            value: JSON.stringify(metadata),
+            validUntilTime: APP_STATE_TTL,
+        },
+    });
+
     return {
-        status: status ?? '',
-        executionId: executionId ?? '',
-        rowId,
-        message: message ?? '',
-        receivedAt: receivedAt ?? '',
-        channelId: channelId ?? '',
+        trackingId,
+        retryAfter,
     };
 }
