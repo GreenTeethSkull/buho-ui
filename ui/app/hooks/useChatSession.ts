@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useConversationManager } from "./useConversationManager";
 import { usePollingResponse } from "./usePollingResponse";
 import type { ConversationDocument, ConversationMessage } from "../domain/conversation";
@@ -42,6 +42,12 @@ export const useChatSession = () => {
     const documentIdRef = useRef<string | null>(null);
     const conversationIdRef = useRef<string | null>(null);
     const copilotConversationIdRef = useRef<string | null>(null);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     const persistConversation = useCallback(async () => {
         if (!documentIdRef.current || !conversationContentRef.current) return;
@@ -114,7 +120,7 @@ export const useChatSession = () => {
     );
 
     const startNewSession = useCallback(
-        async (modelId: string): Promise<boolean> => {
+        async (modelId: string): Promise<string | null> => {
             try {
                 const conversationId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 const now = new Date().toISOString();
@@ -132,7 +138,7 @@ export const useChatSession = () => {
                     initialContent,
                 });
 
-                if (!docResult?.id) return false;
+                if (!docResult?.id) return null;
 
                 documentIdRef.current = docResult.id;
                 documentVersionRef.current = docResult.version || "1";
@@ -149,10 +155,10 @@ export const useChatSession = () => {
                     isSending: false,
                 });
 
-                return true;
+                return docResult.id;
             } catch (error) {
                 console.error("[useChatSession] Error starting new session:", error);
-                return false;
+                return null;
             }
         },
         [createConversationDoc]
@@ -200,7 +206,7 @@ export const useChatSession = () => {
                         const result = await resumeFromTrackingId(
                             pendingPollTrackingId,
                             (elapsedSeconds, progressMessage) => {
-                                if (progressMessage) {
+                                if (progressMessage && mountedRef.current) {
                                     const systemMessage: ConversationMessage = {
                                         role: "system",
                                         content: progressMessage,
@@ -220,7 +226,7 @@ export const useChatSession = () => {
                             }
                         );
 
-                        if (result.conversationId) {
+                        if (mountedRef.current && result.conversationId) {
                             copilotConversationIdRef.current = result.conversationId;
                             if (conversationContentRef.current) {
                                 conversationContentRef.current = {
@@ -230,12 +236,18 @@ export const useChatSession = () => {
                             }
                         }
 
-                        await clearPendingPoll();
-                        await addAssistantMessage(result.response, conversationData.conversationId);
+                        if (mountedRef.current) {
+                            await clearPendingPoll();
+                            await addAssistantMessage(result.response, conversationData.conversationId);
+                        }
                     } catch {
-                        await clearPendingPoll();
+                        if (mountedRef.current) {
+                            await clearPendingPoll();
+                        }
                     } finally {
-                        setSessionState((prev) => ({ ...prev, isSending: false }));
+                        if (mountedRef.current) {
+                            setSessionState((prev) => ({ ...prev, isSending: false }));
+                        }
                     }
                 }
 
@@ -303,7 +315,7 @@ export const useChatSession = () => {
                 const result = await pollFromTrackingId(
                     sendResult.trackingId,
                     (elapsedSeconds, progressMessage) => {
-                        if (progressMessage) {
+                        if (progressMessage && mountedRef.current) {
                             const systemMessage: ConversationMessage = {
                                 role: "system",
                                 content: progressMessage,
@@ -323,37 +335,42 @@ export const useChatSession = () => {
                     }
                 );
 
-                if (result.conversationId) {
-                    copilotConversationIdRef.current = result.conversationId;
-                    if (conversationContentRef.current) {
-                        conversationContentRef.current = {
-                            ...conversationContentRef.current,
-                            copilotConversationId: result.conversationId,
-                        };
+                if (mountedRef.current) {
+                    if (result.conversationId) {
+                        copilotConversationIdRef.current = result.conversationId;
+                        if (conversationContentRef.current) {
+                            conversationContentRef.current = {
+                                ...conversationContentRef.current,
+                                copilotConversationId: result.conversationId,
+                            };
+                        }
                     }
+
+                    await clearPendingPoll();
+                    await addAssistantMessage(result.response, currentConversationId);
                 }
-
-                await clearPendingPoll();
-
-                await addAssistantMessage(result.response, currentConversationId);
                 return true;
             } catch (error) {
-                console.error("[useChatSession] Error sending message:", error);
-                await clearPendingPoll();
-                const errorMessage: ConversationMessage = {
-                    role: "system",
-                    content: error instanceof Error
-                        ? error.message
-                        : "Se ha producido un error al generar la respuesta. Por favor, intenta nuevamente.",
-                    timestamp: new Date().toISOString(),
-                };
-                setSessionState((prev) => {
-                    const filtered = prev.messages.filter((m) => m.role !== "system");
-                    return { ...prev, messages: [...filtered, errorMessage] };
-                });
+                if (mountedRef.current) {
+                    console.error("[useChatSession] Error sending message:", error);
+                    await clearPendingPoll();
+                    const errorMessage: ConversationMessage = {
+                        role: "system",
+                        content: error instanceof Error
+                            ? error.message
+                            : "Se ha producido un error al generar la respuesta. Por favor, intenta nuevamente.",
+                        timestamp: new Date().toISOString(),
+                    };
+                    setSessionState((prev) => {
+                        const filtered = prev.messages.filter((m) => m.role !== "system");
+                        return { ...prev, messages: [...filtered, errorMessage] };
+                    });
+                }
                 return false;
             } finally {
-                setSessionState((prev) => ({ ...prev, isSending: false }));
+                if (mountedRef.current) {
+                    setSessionState((prev) => ({ ...prev, isSending: false }));
+                }
             }
         },
         [persistConversation, sendToBot, pollFromTrackingId, sessionState.conversationId, addAssistantMessage, setPendingPoll, clearPendingPoll]

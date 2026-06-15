@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { useAppFunctionExecutor } from "./useAppFunctionExecutor";
 
 const POLL_RETRY_DELAY_MS = 2_000;
-const MAX_POLLING_TIME_MS = 300_000;
+const MAX_POLLING_TIME_MS = 600_000;
 
 const PROGRESS_MESSAGES: Record<number, string> = {
     1: "Estoy analizando toda la información para darte la mejor respuesta...",
@@ -17,138 +17,153 @@ const PROGRESS_MESSAGES: Record<number, string> = {
 };
 
 interface SendMessageInput {
-    text: string;
-    copilotConversationId?: string;
+  text: string;
+  copilotConversationId?: string;
 }
 
 interface SendMessageOutput {
-    trackingId: string;
-    retryAfter: number;
+  trackingId: string;
+  retryAfter: number;
 }
 
 interface PollResponseInput {
-    trackingId: string;
+  trackingId: string;
 }
 
 type PollResponseOutput =
-    | { status: "completed"; conversationId: string; response: string }
-    | { status: "running"; trackingId: string };
+  | { status: "completed"; conversationId: string; response: string }
+  | { status: "running"; trackingId: string };
 
 export interface PollingResult {
-    response: string;
-    conversationId: string;
+  response: string;
+  conversationId: string;
 }
 
-export type ProgressCallback = (elapsedSeconds: number, message: string | null) => void;
+export type ProgressCallback = (
+  elapsedSeconds: number,
+  message: string | null,
+) => void;
 
 export const usePollingResponse = () => {
-    const { executeAsync: sendAppFunction } = useAppFunctionExecutor<SendMessageInput, SendMessageOutput>(
-        "copilot-send-message"
-    );
-    const { executeAsync: pollAppFunction } = useAppFunctionExecutor<PollResponseInput, PollResponseOutput>(
-        "copilot-poll-response"
-    );
+  const { executeAsync: sendAppFunction } = useAppFunctionExecutor<
+    SendMessageInput,
+    SendMessageOutput
+  >("copilot-send-message");
+  const { executeAsync: pollAppFunction } = useAppFunctionExecutor<
+    PollResponseInput,
+    PollResponseOutput
+  >("copilot-poll-response");
 
-    const isPollingRef = useRef(false);
+  const isPollingRef = useRef(false);
 
-    const createPollLoop = useCallback(
-        (startTime: number, onProgress?: ProgressCallback) => {
-            let lastProgressMinute = 0;
+  const createPollLoop = useCallback(
+    (startTime: number, onProgress?: ProgressCallback) => {
+      let lastProgressMinute = 0;
 
-            const checkProgress = () => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const currentMinute = Math.floor(elapsed / 60);
-                if (currentMinute > lastProgressMinute && PROGRESS_MESSAGES[currentMinute]) {
-                    lastProgressMinute = currentMinute;
-                    onProgress?.(elapsed, PROGRESS_MESSAGES[currentMinute]);
-                }
-            };
+      const checkProgress = () => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const currentMinute = Math.floor(elapsed / 60);
+        if (
+          currentMinute > lastProgressMinute &&
+          PROGRESS_MESSAGES[currentMinute]
+        ) {
+          lastProgressMinute = currentMinute;
+          onProgress?.(elapsed, PROGRESS_MESSAGES[currentMinute]);
+        }
+      };
 
-            const pollLoop = async (trackingId: string): Promise<PollingResult> => {
-                checkProgress();
+      const pollLoop = async (trackingId: string): Promise<PollingResult> => {
+        checkProgress();
 
-                if (Date.now() - startTime >= MAX_POLLING_TIME_MS) {
-                    throw new Error(
-                        "La respuesta ha tardado más de lo esperado. Por favor, intenta nuevamente."
-                    );
-                }
+        if (Date.now() - startTime >= MAX_POLLING_TIME_MS) {
+          throw new Error(
+            "La respuesta ha tardado más de lo esperado. Por favor, intenta nuevamente.",
+          );
+        }
 
-                const pollResult = await pollAppFunction({ trackingId });
+        const pollResult = await pollAppFunction({ trackingId });
 
-                if (pollResult.status === "completed") {
-                    return {
-                        response: pollResult.response,
-                        conversationId: pollResult.conversationId,
-                    };
-                }
+        if (pollResult.status === "completed") {
+          return {
+            response: pollResult.response,
+            conversationId: pollResult.conversationId,
+          };
+        }
 
-                await new Promise<void>((resolve) => setTimeout(resolve, POLL_RETRY_DELAY_MS));
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, POLL_RETRY_DELAY_MS),
+        );
 
-                return pollLoop(pollResult.trackingId);
-            };
+        return pollLoop(pollResult.trackingId);
+      };
 
-            return pollLoop;
-        },
-        [pollAppFunction]
-    );
+      return pollLoop;
+    },
+    [pollAppFunction],
+  );
 
-    const sendMessage = useCallback(
-        async (
-            text: string,
-            copilotConversationId: string | null
-        ): Promise<SendMessageOutput> => {
-            return sendAppFunction({
-                text,
-                copilotConversationId: copilotConversationId ?? undefined,
-            });
-        },
-        [sendAppFunction]
-    );
+  const sendMessage = useCallback(
+    async (
+      text: string,
+      copilotConversationId: string | null,
+    ): Promise<SendMessageOutput> => {
+      return sendAppFunction({
+        text,
+        copilotConversationId: copilotConversationId ?? undefined,
+      });
+    },
+    [sendAppFunction],
+  );
 
-    const pollFromTrackingId = useCallback(
-        async (
-            trackingId: string,
-            onProgress?: ProgressCallback
-        ): Promise<PollingResult> => {
-            if (isPollingRef.current) {
-                throw new Error("A polling session is already in progress.");
-            }
-            isPollingRef.current = true;
+  const pollFromTrackingId = useCallback(
+    async (
+      trackingId: string,
+      onProgress?: ProgressCallback,
+    ): Promise<PollingResult> => {
+      if (isPollingRef.current) {
+        throw new Error("A polling session is already in progress.");
+      }
+      isPollingRef.current = true;
 
-            try {
-                const pollLoop = createPollLoop(Date.now(), onProgress);
-                const result = await pollLoop(trackingId);
-                isPollingRef.current = false;
-                return result;
-            } catch (error) {
-                isPollingRef.current = false;
-                throw error;
-            }
-        },
-        [createPollLoop]
-    );
+      try {
+        const pollLoop = createPollLoop(Date.now(), onProgress);
+        const result = await pollLoop(trackingId);
+        isPollingRef.current = false;
+        return result;
+      } catch (error) {
+        isPollingRef.current = false;
+        throw error;
+      }
+    },
+    [createPollLoop],
+  );
 
-    const sendWithPolling = useCallback(
-        async (
-            text: string,
-            copilotConversationId: string | null,
-            onProgress?: ProgressCallback
-        ): Promise<PollingResult> => {
-            const sendResult = await sendMessage(text, copilotConversationId);
-            return pollFromTrackingId(sendResult.trackingId, onProgress);
-        },
-        [sendMessage, pollFromTrackingId]
-    );
+  const sendWithPolling = useCallback(
+    async (
+      text: string,
+      copilotConversationId: string | null,
+      onProgress?: ProgressCallback,
+    ): Promise<PollingResult> => {
+      const sendResult = await sendMessage(text, copilotConversationId);
+      return pollFromTrackingId(sendResult.trackingId, onProgress);
+    },
+    [sendMessage, pollFromTrackingId],
+  );
 
-    const resumeFromTrackingId = useCallback(
-        async (
-            trackingId: string,
-            onProgress?: ProgressCallback
-        ): Promise<PollingResult> => {
-            return pollFromTrackingId(trackingId, onProgress);
-        },
-        [pollFromTrackingId]
-    );
+  const resumeFromTrackingId = useCallback(
+    async (
+      trackingId: string,
+      onProgress?: ProgressCallback,
+    ): Promise<PollingResult> => {
+      return pollFromTrackingId(trackingId, onProgress);
+    },
+    [pollFromTrackingId],
+  );
 
-    return { sendMessage, pollFromTrackingId, sendWithPolling, resumeFromTrackingId };
+  return {
+    sendMessage,
+    pollFromTrackingId,
+    sendWithPolling,
+    resumeFromTrackingId,
+  };
 };
