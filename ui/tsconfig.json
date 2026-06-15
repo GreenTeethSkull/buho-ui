@@ -1,7 +1,6 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "ignoreDeprecations": true,
     "baseUrl": ".",
     "declaration": true,
     "emitDecoratorMetadata": true,

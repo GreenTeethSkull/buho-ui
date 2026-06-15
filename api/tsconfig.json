@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-        "ignoreDeprecations": true,
         "module": "esnext",
         "moduleResolution": "node",
         "target": "esnext",
