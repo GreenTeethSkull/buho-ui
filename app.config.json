@@ -3,7 +3,7 @@
   "environmentUrl": "https://hmc05194.apps.dynatrace.com/",
   "app": {
     "name": "Lucy",
-    "version": "0.0.25",
+    "version": "0.0.26",
     "description": "Chat with SRE Agents",
     "id": "my.sre.agents",
     "icon": "ui/assets/LUCY-ICON.png",
@@ -40,6 +40,22 @@
       {
         "name": "state:app-states:write",
         "comment": "Write tracking id location from power automate"
+      },
+      {
+        "name": "document:environment-shares:write",
+        "comment": "Create environment share for chat (owner)"
+      },
+      {
+        "name": "document:environment-shares:read",
+        "comment": "List/get environment shares"
+      },
+      {
+        "name": "document:environment-shares:delete",
+        "comment": "Revoke environment share (owner)"
+      },
+      {
+        "name": "document:environment-shares:claim",
+        "comment": "Claim shared chat (recipient)"
       }
     ]
   }

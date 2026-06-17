@@ -7,3 +7,4 @@ export type { ChatSessionState } from "./useChatSession";
 export { useConversationManager, useConversationContent } from "./useConversationManager";
 export { useConversationsList } from "./useConversationsList";
 export { usePollingResponse } from "./usePollingResponse";
+export { useEnvironmentShare } from "./useEnvironmentShare";
