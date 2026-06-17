@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Button } from "@dynatrace/strato-components/buttons";
 import { Text } from "@dynatrace/strato-components/typography";
-import { PlusIcon, ChatIcon, DeleteIcon, ResearchIcon } from "@dynatrace/strato-icons";
+import { PlusIcon, ChatIcon, DeleteIcon, ResearchIcon, ShareIcon } from "@dynatrace/strato-icons";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 
 export interface SidebarConversation {
@@ -10,6 +10,8 @@ export interface SidebarConversation {
   title: string;
   version: string;
   updatedAt: Date;
+  isShared?: boolean;
+  isSharedWithCurrentUser?: boolean;
 }
 
 interface ChatSidebarProps {
@@ -18,6 +20,7 @@ interface ChatSidebarProps {
   onSelectConversation: (id: string) => void;
   onNewChat: () => void;
   onDeleteConversation: (id: string) => void;
+  onShare: (id: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   sidebarOpen?: boolean;
@@ -46,6 +49,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onSelectConversation,
   onNewChat,
   onDeleteConversation,
+  onShare,
   searchQuery,
   onSearchChange,
   sidebarOpen = true,
@@ -177,6 +181,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     isActive={activeConversationId === conversation.id}
                     onSelect={onSelectConversation}
                     onDelete={onDeleteConversation}
+                    onShare={onShare}
                   />
                 ))}
               </div>
@@ -193,11 +198,13 @@ interface SidebarItemProps {
   isActive: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onShare: (id: string) => void;
 }
 
-const SidebarItem: React.FC<SidebarItemProps> = ({ conversation, isActive, onSelect, onDelete }) => {
+const SidebarItem: React.FC<SidebarItemProps> = ({ conversation, isActive, onSelect, onDelete, onShare }) => {
   const [hovered, setHovered] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const isReceived = conversation.isSharedWithCurrentUser === true;
 
   return (
     <div
@@ -234,28 +241,63 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ conversation, isActive, onSel
       }}>
         {conversation.title}
       </Text>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(conversation.id); }}
-        onMouseEnter={() => setShowDelete(true)}
-        onMouseLeave={() => setShowDelete(false)}
-        style={{
-          background: "transparent",
-          border: "none",
-          padding: "4px",
-          cursor: "pointer",
-          borderRadius: "4px",
-          color: showDelete ? Colors.Text.Neutral.Default : Colors.Text.Neutral.Subdued,
-          opacity: hovered || isActive ? 1 : 0,
-          transition: "opacity 0.15s ease",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+      {conversation.isShared && !isReceived && (
+        <ShareIcon style={{
+          width: "12px",
+          height: "12px",
+          color: Colors.Text.Primary.Default,
           flexShrink: 0,
-          visibility: hovered || isActive ? "visible" : "hidden",
-        }}
-      >
-        <DeleteIcon style={{ width: "14px", height: "14px" }} />
-      </button>
+          opacity: hovered || isActive ? 0 : 0.6,
+          transition: "opacity 0.15s ease",
+        }} />
+      )}
+      {!isReceived && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onShare(conversation.id); }}
+          title="Compartir"
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: "4px",
+            cursor: "pointer",
+            borderRadius: "4px",
+            color: Colors.Text.Neutral.Subdued,
+            opacity: hovered || isActive ? 1 : 0,
+            transition: "opacity 0.15s ease",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            visibility: hovered || isActive ? "visible" : "hidden",
+          }}
+        >
+          <ShareIcon style={{ width: "14px", height: "14px" }} />
+        </button>
+      )}
+      {!isReceived && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(conversation.id); }}
+          onMouseEnter={() => setShowDelete(true)}
+          onMouseLeave={() => setShowDelete(false)}
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: "4px",
+            cursor: "pointer",
+            borderRadius: "4px",
+            color: showDelete ? Colors.Text.Neutral.Default : Colors.Text.Neutral.Subdued,
+            opacity: hovered || isActive ? 1 : 0,
+            transition: "opacity 0.15s ease",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            visibility: hovered || isActive ? "visible" : "hidden",
+          }}
+        >
+          <DeleteIcon style={{ width: "14px", height: "14px" }} />
+        </button>
+      )}
     </div>
   );
 };

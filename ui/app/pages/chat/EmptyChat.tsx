@@ -75,6 +75,7 @@ const ThinkingCircle: React.FC = () => {
 
 interface EmptyChatProps {
   onSuggestionClick?: (message: string) => void;
+  readOnly?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -84,7 +85,7 @@ const SUGGESTIONS = [
   { text: "Busca en archivos postmortem problemas anteriores de GuideWire", icon: CodeIcon, color: Colors.Text.Warning.Default },
 ];
 
-export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
+export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick, readOnly = false }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const handleClick = (suggestion: string) => { if (onSuggestionClick) onSuggestionClick(suggestion); };
@@ -102,7 +103,12 @@ export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
       </Flex>
 
       <Flex gap={12} flexWrap="wrap" justifyContent="center" style={{ maxWidth: "700px", width: "100%" }}>
-        {SUGGESTIONS.map((sug, index) => {
+        {readOnly ? (
+          <span style={{ color: Colors.Text.Neutral.Subdued, fontSize: "14px", textAlign: "center" }}>
+            Esta conversación es de solo lectura.
+          </span>
+        ) : (
+          SUGGESTIONS.map((sug, index) => {
           const IconComponent = sug.icon;
           return (
             <Flex key={sug.text} flex="1 1 calc(50% - 12px)" minWidth="260px" maxWidth="340px" padding={12}
@@ -126,7 +132,8 @@ export const EmptyChat: React.FC<EmptyChatProps> = ({ onSuggestionClick }) => {
               </Flex>
             </Flex>
           );
-        })}
+        })
+        )}
       </Flex>
     </Flex>
   );

@@ -5,6 +5,7 @@ import Colors from "@dynatrace/strato-design-tokens/colors";
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }
 
 const MIN_HEIGHT = 52;
@@ -13,6 +14,7 @@ const MAX_HEIGHT = 200;
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled = false,
+  placeholder = "Escribe un mensaje...",
 }) => {
   const [message, setMessage] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -101,7 +103,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="Escribe un mensaje..."
+          placeholder={placeholder}
           disabled={disabled}
           rows={1}
           style={{

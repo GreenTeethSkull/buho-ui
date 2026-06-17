@@ -1,5 +1,6 @@
 import { ProgressCircle } from "@dynatrace/strato-components/content";
 import { AiLoadingIndicator } from "@dynatrace/strato-components-preview/content";
+import { showToast } from "@dynatrace/strato-components-preview/notifications";
 import { Flex } from "@dynatrace/strato-components/layouts";
 import { Text } from "@dynatrace/strato-components/typography";
 import { AIModelIcon } from "@dynatrace/strato-icons";
@@ -10,11 +11,13 @@ import { useConversationContent, useConversationManager } from "../../hooks/useC
 import { useConversationsList } from "../../hooks/useConversationsList";
 import { useChatSession } from "../../hooks/useChatSession";
 import { useAppShell } from "../../hooks/useAppShell";
+import { useEnvironmentShare } from "../../hooks/useEnvironmentShare";
 import Colors from "@dynatrace/strato-design-tokens/colors";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage } from "./ChatMessage";
 import { ChatSidebar, SidebarConversation } from "./ChatSidebar";
 import { EmptyChat } from "./EmptyChat";
+import { ShareChatModal } from "./ShareChatModal";
 import type { DocumentMetaData } from "@dynatrace-sdk/client-document";
 
 const MOCK_MODELS = [
@@ -28,6 +31,8 @@ export const Chat: React.FC = () => {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isStartingMessage, setIsStartingMessage] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [shareConversationId, setShareConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -44,6 +49,7 @@ export const Chat: React.FC = () => {
   const { deleteConversation } = useConversationManager();
   const { sessionState, startNewSession, resumeSession, sendMessage, endSession } = useChatSession();
   const { document: selectedDoc, isLoading: isLoadingDoc } = useConversationContent(activeConversationId);
+  const { claimShare, getShare, deleteShare } = useEnvironmentShare();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,6 +75,8 @@ export const Chat: React.FC = () => {
           ? new Date(doc.modificationInfo.lastModifiedTime)
           : new Date(),
         version: doc.version,
+        isShared: doc.shareInfo?.isShared,
+        isSharedWithCurrentUser: doc.shareInfo?.isSharedWithCurrentUser,
       }));
       mapped.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       setConversations(mapped);
@@ -79,6 +87,33 @@ export const Chat: React.FC = () => {
     const urlId = searchParams.get("id");
     if (urlId && urlId !== activeConversationId) setActiveConversationId(urlId);
   }, [searchParams, activeConversationId]);
+
+  useEffect(() => {
+    const shareId = searchParams.get("share");
+    if (!shareId) return;
+    let cancelled = false;
+    setIsClaiming(true);
+    const claim = async () => {
+      try {
+        const result = await claimShare(shareId);
+        if (cancelled) return;
+        if (result) {
+          setSearchParams({ id: result.documentId });
+        } else {
+          showToast({
+            title: "Chat no disponible",
+            message: "El link expiró o ya no está compartido.",
+            type: "critical",
+          });
+          setSearchParams({});
+        }
+      } finally {
+        if (!cancelled) setIsClaiming(false);
+      }
+    };
+    void claim();
+    return () => { cancelled = true; };
+  }, [searchParams, claimShare, setSearchParams]);
 
   useEffect(() => {
     const loadAndResumeSession = async () => {
@@ -121,6 +156,10 @@ export const Chat: React.FC = () => {
         setActiveConversationId(null);
         setSearchParams({});
       }
+      if (conversationToDelete.isShared) {
+        const share = await getShare(id);
+        if (share) await deleteShare(share.id);
+      }
       const success = await deleteConversation(id, conversationToDelete.version);
       void success;
       refetchConversations();
@@ -128,7 +167,7 @@ export const Chat: React.FC = () => {
       console.error("Error deleting conversation", error);
       refetchConversations();
     }
-  }, [conversations, activeConversationId, setSearchParams, deleteConversation, refetchConversations, endSession]);
+  }, [conversations, activeConversationId, setSearchParams, deleteConversation, refetchConversations, endSession, getShare, deleteShare]);
 
   const handleSendMessage = useCallback(async (content: string) => {
     const shouldStartSession = !sessionState.isActive;
@@ -150,8 +189,9 @@ export const Chat: React.FC = () => {
     }
   }, [refetchConversations, selectedModel, sendMessage, sessionState.isActive, startNewSession]);
 
-  const isLoading = (((isLoadingDoc && activeConversationId) || isStartingMessage) && sessionState.messages.length === 0);
+  const isLoading = isClaiming || (((isLoadingDoc && activeConversationId) || isStartingMessage) && sessionState.messages.length === 0);
   const showLoadingIndicator = sessionState.isSending;
+  const isReadOnly = selectedDoc?.metadata?.shareInfo?.isSharedWithCurrentUser === true;
 
   return (
     <Flex style={{ height: "100%", overflow: "hidden", background: Colors.Background.Base.Default }}>
@@ -161,6 +201,7 @@ export const Chat: React.FC = () => {
         onSelectConversation={handleSelectConversation}
         onNewChat={handleNewChat}
         onDeleteConversation={(id) => void handleDeleteConversation(id)}
+        onShare={setShareConversationId}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         sidebarOpen={sidebarOpen}
@@ -176,11 +217,13 @@ export const Chat: React.FC = () => {
             <Flex justifyContent="center" alignItems="center" style={{ flex: 1 }}>
               <Flex flexDirection="column" alignItems="center" gap={16}>
                 <ProgressCircle />
-                <Text style={{ color: Colors.Text.Neutral.Subdued }}>Cargando conversación...</Text>
+                <Text style={{ color: Colors.Text.Neutral.Subdued }}>
+                  {isClaiming ? "Abriendo chat compartido..." : "Cargando conversación..."}
+                </Text>
               </Flex>
             </Flex>
           ) : sessionState.messages.length === 0 ? (
-            <EmptyChat onSuggestionClick={(msg) => void handleSendMessage(msg)} />
+            <EmptyChat onSuggestionClick={(msg) => void handleSendMessage(msg)} readOnly={isReadOnly} />
           ) : (
             <Flex flexDirection="column">
               {sessionState.messages.map((message, index) => (
@@ -200,9 +243,23 @@ export const Chat: React.FC = () => {
         <ChatInput
           key={activeConversationId ?? "new"}
           onSendMessage={(msg) => void handleSendMessage(msg)}
-          disabled={sessionState.isSending}
+          disabled={sessionState.isSending || isReadOnly}
+          placeholder={isReadOnly ? "Conversación de solo lectura" : undefined}
         />
       </Flex>
+
+      {shareConversationId && (
+        <ShareChatModal
+          conversationId={shareConversationId}
+          conversationName={
+            conversations.find((c) => c.id === shareConversationId)?.title ?? "Conversación"
+          }
+          onDismiss={() => {
+            setShareConversationId(null);
+            refetchConversations();
+          }}
+        />
+      )}
     </Flex>
   );
 };
