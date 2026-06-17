@@ -174,7 +174,8 @@ export const useChatSession = () => {
             docId: string,
             conversationData: ConversationDocument,
             version: string,
-            name: string
+            name: string,
+            readOnly: boolean = false
         ): Promise<boolean> => {
             try {
                 documentIdRef.current = docId;
@@ -191,6 +192,8 @@ export const useChatSession = () => {
                     messages: conversationData.messages || [],
                     isSending: false,
                 });
+
+                if (readOnly) return true;
 
                 const { pendingPollTrackingId, pendingPollCreatedAt } = conversationData;
 

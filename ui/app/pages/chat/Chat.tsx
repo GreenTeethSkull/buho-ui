@@ -76,7 +76,7 @@ export const Chat: React.FC = () => {
           : new Date(),
         version: doc.version,
         isShared: doc.shareInfo?.isShared,
-        isSharedWithCurrentUser: doc.shareInfo?.isSharedWithCurrentUser,
+        isReadOnly: !doc.access?.includes("write"),
       }));
       mapped.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       setConversations(mapped);
@@ -123,11 +123,13 @@ export const Chat: React.FC = () => {
         if (!selectedDoc.content) return;
         const contentText = await selectedDoc.content.get("text");
         const contentJson = JSON.parse(contentText) as ConversationDocument;
+        const readOnly = !selectedDoc.metadata?.access?.includes("write");
         await resumeSession(
           activeConversationId,
           { ...contentJson, messages: contentJson.messages || [] },
           selectedDoc.metadata?.version ?? "1",
-          selectedDoc.metadata?.name ?? "Chat"
+          selectedDoc.metadata?.name ?? "Chat",
+          readOnly
         );
       } catch (e) { console.error("Failed to resume session", e); }
     };
@@ -149,7 +151,7 @@ export const Chat: React.FC = () => {
   const handleDeleteConversation = useCallback(async (id: string) => {
     try {
       const conversationToDelete = conversations.find((c) => c.id === id);
-      if (!conversationToDelete) return;
+      if (!conversationToDelete || conversationToDelete.isReadOnly) return;
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (activeConversationId === id) {
         endSession();
@@ -191,7 +193,7 @@ export const Chat: React.FC = () => {
 
   const isLoading = isClaiming || (((isLoadingDoc && activeConversationId) || isStartingMessage) && sessionState.messages.length === 0);
   const showLoadingIndicator = sessionState.isSending;
-  const isReadOnly = selectedDoc?.metadata?.shareInfo?.isSharedWithCurrentUser === true;
+  const isReadOnly = !selectedDoc?.metadata?.access?.includes("write");
 
   return (
     <Flex style={{ height: "100%", overflow: "hidden", background: Colors.Background.Base.Default }}>
@@ -240,12 +242,13 @@ export const Chat: React.FC = () => {
           )}
         </div>
 
-        <ChatInput
-          key={activeConversationId ?? "new"}
-          onSendMessage={(msg) => void handleSendMessage(msg)}
-          disabled={sessionState.isSending || isReadOnly}
-          placeholder={isReadOnly ? "Conversación de solo lectura" : undefined}
-        />
+        {!isReadOnly && (
+          <ChatInput
+            key={activeConversationId ?? "new"}
+            onSendMessage={(msg) => void handleSendMessage(msg)}
+            disabled={sessionState.isSending}
+          />
+        )}
       </Flex>
 
       {shareConversationId && (

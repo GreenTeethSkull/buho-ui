@@ -11,7 +11,7 @@ export interface SidebarConversation {
   version: string;
   updatedAt: Date;
   isShared?: boolean;
-  isSharedWithCurrentUser?: boolean;
+  isReadOnly?: boolean;
 }
 
 interface ChatSidebarProps {
@@ -204,7 +204,7 @@ interface SidebarItemProps {
 const SidebarItem: React.FC<SidebarItemProps> = ({ conversation, isActive, onSelect, onDelete, onShare }) => {
   const [hovered, setHovered] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const isReceived = conversation.isSharedWithCurrentUser === true;
+  const isReceived = conversation.isReadOnly === true;
 
   return (
     <div
@@ -241,6 +241,16 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ conversation, isActive, onSel
       }}>
         {conversation.title}
       </Text>
+      {isReceived && (
+        <span title="Compartido contigo" style={{ display: "flex", flexShrink: 0 }}>
+          <ShareIcon style={{
+            width: "12px",
+            height: "12px",
+            color: Colors.Text.Neutral.Subdued,
+            opacity: 0.6,
+          }} />
+        </span>
+      )}
       {conversation.isShared && !isReceived && (
         <ShareIcon style={{
           width: "12px",

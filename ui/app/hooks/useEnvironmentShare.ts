@@ -32,18 +32,6 @@ export const useEnvironmentShare = () => {
     []
   );
 
-  const getShareById = useCallback(
-    async (shareId: string): Promise<EnvironmentShare | null> => {
-      try {
-        return await environmentSharesClient.getEnvironmentShare({ id: shareId });
-      } catch (error) {
-        console.error("useEnvironmentShare.getShareById", error);
-        return null;
-      }
-    },
-    []
-  );
-
   const createShare = useCallback(
     async (documentId: string): Promise<EnvironmentShare | null> => {
       try {
@@ -125,7 +113,6 @@ export const useEnvironmentShare = () => {
   return {
     createShare,
     getShare,
-    getShareById,
     deleteShare,
     claimShare,
     buildShareLink,
